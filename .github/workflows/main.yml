@@ -27,6 +27,8 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git pull origin main --rebase
           git add known_movies.txt
           git commit -m "Update known movies" || exit 0
           git push
+          git push origin main           # <--- USE 'origin main'
