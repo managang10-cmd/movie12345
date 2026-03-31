@@ -1,41 +1,54 @@
-name: BMS Hourly Check
+name: BMS Hourly Tracker
 on:
   schedule:
-    - cron: '0 * * * *' # Runs at the start of every hour
-  workflow_dispatch:     # Adds a button to run it manually
+    - cron: '0 * * * *' # Runs exactly at the start of every hour
+  workflow_dispatch:     # Allows you to click "Run workflow" manually
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Grants the bot permission to save the movie list back to your repo
     permissions:
       contents: write
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Downloads full history so it can sync and push
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
+
       - name: Install dependencies
         run: pip install cloudscraper beautifulsoup4 requests
+
       - name: Run tracker
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: python tracker.py
-      - name: Save state
+
+      - name: Save and Sync State
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Fetch the latest changes from the remote
-          git fetch origin main
-          # Reset to the latest remote state to avoid conflicts
-          git reset --hard origin/main
+          
+          # Only proceed if the file was created/updated
           if [ -f known_movies.txt ]; then
             git add known_movies.txt
-            git commit -m "Update known movies" || echo "No changes to commit"
+            
+            # Commit only if there are actual changes to the movie list
+            git commit -m "Update known movies [skip ci]" || exit 0
+            
+            # Use rebase to pull any remote changes and put our commit on top
+            # This prevents the "rejected" error
+            git pull --rebase origin main
+            
+            # Push the final result
             git push origin main
           else
-            echo "File known_movies.txt not found, skipping git push."
+            echo "No known_movies.txt found. Skipping save step."
           fi
-          
