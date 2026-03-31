@@ -2,7 +2,7 @@ import os, re, requests, cloudscraper
 from bs4 import BeautifulSoup
 
 # ── CONFIGURATION ────────────────────────
-CHECK_DATE  = "20260401" # Target Date (Tomorrow)
+CHECK_DATE  = "20260402" # Target Date (Tomorrow)
 THEATRE_URL = f"https://in.bookmyshow.com/cinemas/hyderabad/allu-cinemas-kokapet/buytickets/ALUC/{CHECK_DATE}"
 STATE_FILE  = "known_movies.txt"
 
