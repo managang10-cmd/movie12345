@@ -22,7 +22,7 @@ def extract_movies(html):
     movies = set()
     for script in soup.find_all("script"):
         text = script.string or ""
-        patterns = [r'"EventTitle"\s* : \s*"([^"]+)"', r'"movieName"\s* : \s*"([^"]+)"']
+        patterns = [r'"EventTitle"\s*:\s*"([^"]+)"', r'"movieName"\s*:\s*"([^"]+)"']
         for pattern in patterns:
             for match in re.findall(pattern, text):
                 if 2 < len(match) < 60: 
@@ -38,6 +38,7 @@ def main():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, "r") as f:
             known = set(line.strip() for line in f if line.strip())
+        print(f"Loaded {len(known)} movies from history.")
 
     # Stealth Scraper Configuration
     scraper = cloudscraper.create_scraper(
@@ -52,7 +53,6 @@ def main():
     for attempt in range(3):
         try:
             print(f"Attempt {attempt + 1}...")
-            # We add custom headers to look more like a real user
             headers = {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.5',
@@ -66,16 +66,28 @@ def main():
                 print(f"Found on page: {current}")
                 
                 new_items = current - known
+                
+                # Always save state to keep file in sync
                 with open(STATE_FILE, "w") as f:
                     f.write("\n".join(sorted(current)))
                 
                 if new_items and len(known) > 0:
-                    send_telegram(f"🎬 *New Show Added!*\n\n" + "\n".join([f"• {m}" for m in new_items]))
+                    msg = f"🎬 *New Show Added!*\n\n" + "\n".join([f"• {m}" for m in new_items])
+                    send_telegram(msg)
+                    print("Telegram alert sent!")
                 
                 success = True
                 print("Check completed successfully.")
                 break
             else:
-                print(f"Failed with Status {resp.status_code}. Retrying in 5s...")
+                print(f"Failed with Status {resp.status_code}. Retrying...")
                 time.sleep(5)
-        except Exception as e
+        except Exception as e:
+            print(f"Error on attempt {attempt+1}: {e}")
+            time.sleep(5)
+
+    if not success:
+        print("Could not bypass Cloudflare after 3 attempts.")
+
+if __name__ == "__main__":
+    main()
