@@ -14,7 +14,6 @@ def send_telegram(msg):
     payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
     try:
         r = requests.post(url, json=payload, timeout=15)
-        # This will print the actual error from Telegram if it fails
         print(f"Telegram Response: {r.status_code} - {r.text}")
     except Exception as e:
         print(f"Telegram Critical Error: {e}")
@@ -33,7 +32,7 @@ def extract_movies(html):
     return {m for m in movies if m.lower() not in noise and len(m) > 3}
 
 def main():
-    print(f"--- STARTING STEALTH CHECK ---")
+    print("--- STARTING STEALTH CHECK ---")
     
     known = set()
     if os.path.exists(STATE_FILE):
@@ -56,6 +55,27 @@ def main():
                 
                 new_items = current - known
                 
-                # Update the file immediately
                 with open(STATE_FILE, "w") as f:
-                    f
+                    f.write("\n".join(sorted(current)))
+                
+                if new_items:
+                    msg = f"🎬 *New Show Added!*\n\n" + "\n".join([f"• {m}" for m in new_items])
+                    send_telegram(msg)
+                    print(f"Alert sent for: {new_items}")
+                else:
+                    print("No new movies found.")
+                
+                success = True
+                break
+            else:
+                print(f"BMS blocked us (Status {resp.status_code}). Retrying...")
+                time.sleep(5)
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(5)
+
+    if not success:
+        print("Scrape failed after all attempts.")
+
+if __name__ == "__main__":
+    main()
