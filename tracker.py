@@ -9,7 +9,7 @@ STATE_FILE  = "known_movies.txt"
 
 # Multiple Bot Configurations
 TELEGRAM_CONFIGS = [
-    {"bot_token": os.getenv("BOT_TOKEN_1"), "chat_id": os.getenv("CHAT_ID_1")},
+    {"bot_token": os.getenv("BOT_TOKEN"), "chat_id": os.getenv("CHAT_ID")},
     {"bot_token": os.getenv("BOT_TOKEN_2"), "chat_id": os.getenv("CHAT_ID_2")},
     {"bot_token": os.getenv("BOT_TOKEN_3"), "chat_id": os.getenv("CHAT_ID_3")},
     # Add more as needed
