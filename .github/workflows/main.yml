@@ -1,7 +1,7 @@
 name: BMS Tracker 20min
 on:
   schedule:
-    - cron: '*/25 * * * *' # Runs every 20 minutes
+    - cron: '13,33,53 * * * *' # Runs every 20 minutes
   workflow_dispatch:      # Allows manual "Run workflow" button
 
 jobs:
