@@ -27,8 +27,13 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull origin main --rebase
+          # Fetch the latest changes from the remote
+          git fetch origin main
+          # Reset to the latest remote state to avoid conflicts
+          git reset --hard origin/main
+          # Add the file
           git add known_movies.txt
-          git commit -m "Update known movies" || exit 0
-          git push
-          git push origin main           # <--- USE 'origin main'
+          # Commit only if there are actual changes
+          git commit -m "Update known movies" || echo "No changes to commit"
+          # Push the changes
+          git push origin main
