@@ -1,22 +1,50 @@
-import os, re, requests, cloudscraper, time
+import os, re, requests, cloudscraper, time, json
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor
 
 # ── CONFIGURATION ────────────────────────
 CHECK_DATE  = "20260402" 
 THEATRE_URL = f"https://in.bookmyshow.com/cinemas/hyderabad/allu-cinemas-kokapet/buytickets/ALUC/{CHECK_DATE}"
 STATE_FILE  = "known_movies.txt"
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID   = os.getenv("CHAT_ID")
+# Multiple Bot Configurations
+TELEGRAM_CONFIGS = [
+    {"bot_token": os.getenv("BOT_TOKEN_1"), "chat_id": os.getenv("CHAT_ID_1")},
+    {"bot_token": os.getenv("BOT_TOKEN_2"), "chat_id": os.getenv("CHAT_ID_2")},
+    {"bot_token": os.getenv("BOT_TOKEN_3"), "chat_id": os.getenv("CHAT_ID_3")},
+    # Add more as needed
+]
 
-def send_telegram(msg):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
+def send_telegram(msg, bot_token, chat_id):
+    """Send message to a specific bot and chat"""
+    if not bot_token or not chat_id:
+        print(f"⚠️  Skipping - Missing credentials")
+        return False
+    
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}
     try:
         r = requests.post(url, json=payload, timeout=15)
-        print(f"Telegram Response: {r.status_code}")
+        print(f"✅ Bot {bot_token[:10]}... → Chat {chat_id}: {r.status_code}")
+        return r.status_code == 200
     except Exception as e:
-        print(f"Telegram Error: {e}")
+        print(f"❌ Bot Error: {e}")
+        return False
+
+def send_to_all_chats(msg):
+    """Send message to all configured bots/chats in parallel"""
+    print(f"\n📤 Sending to {len(TELEGRAM_CONFIGS)} destinations...")
+    
+    with ThreadPoolExecutor(max_workers=len(TELEGRAM_CONFIGS)) as executor:
+        futures = [
+            executor.submit(send_telegram, msg, config["bot_token"], config["chat_id"])
+            for config in TELEGRAM_CONFIGS if config["bot_token"] and config["chat_id"]
+        ]
+        results = [f.result() for f in futures]
+    
+    success_count = sum(results)
+    print(f"✨ Successfully sent to {success_count}/{len(results)} destinations")
+    return success_count > 0
 
 def extract_movies(html):
     soup = BeautifulSoup(html, "html.parser")
@@ -87,7 +115,7 @@ def main():
                 
                 if new_items:
                     msg = f"🎬 *New Show Added!*\n\n" + "\n".join([f"• {m}" for m in new_items])
-                    send_telegram(msg)
+                    send_to_all_chats(msg)  # Send to all bots/chats
                     print(f"Alert sent!")
                 else:
                     print("No new movies found.")
