@@ -1,47 +1,38 @@
-def main():
-    # STEP 1: ALWAYS define known
-    known = set()
+import os, requests, cloudscraper
 
+# Target URL
+CHECK_DATE  = "20260401"
+THEATRE_URL = f"https://in.bookmyshow.com/cinemas/hyderabad/allu-cinemas-kokapet/buytickets/ALUC/{CHECK_DATE}"
+
+def diagnostic_test():
+    print("--- STARTING CONNECTION TEST ---")
+    
+    # Try using Cloudscraper (to bypass Cloudflare)
+    scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
+    
     try:
-        # STEP 2: Load from file if it exists
-        if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, "r") as f:
-                known = set(line.strip() for line in f if line.strip())
-            print(f"Loaded {len(known)} known movies.")
+        print(f"Attempting to access: {THEATRE_URL}")
+        resp = scraper.get(THEATRE_URL, timeout=30)
+        
+        print(f"Status Code: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            print("✅ SUCCESS: BookMyShow is accessible!")
+            # Check if we actually got real content or a 'Request Blocked' page
+            if "EventTitle" in resp.text or "movieName" in resp.text:
+                print("✅ DATA CHECK: Movie data found in HTML!")
+            else:
+                print("⚠️ DATA CHECK: Page loaded, but no movie markers found (could be a blank schedule).")
+        
+        elif resp.status_code == 403:
+            print("❌ BLOCKED: Cloudflare (403) blocked the GitHub Runner.")
         else:
-            print("First run: No known_movies.txt found.")
-
-        # STEP 3: Scrape BMS
-        scraper = cloudscraper.create_scraper(
-            browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True}
-        )
-        resp = scraper.get(THEATRE_URL, timeout=20)
-
-        if resp.status_code != 200:
-            print(f"BMS returned error: {resp.status_code}")
-            return
-
-        current = extract_movies(resp.text)
-        print(f"Found on page: {current}")
-
-        # STEP 4: Compare safely
-        new_items = current - known
-
-        if new_items:
-            print(f"NEW MOVIES: {new_items}")
-
-            if known:  # avoids first-run spam
-                send_telegram(
-                    "🎬 *New Show Added!*\n\n" +
-                    "\n".join([f"• {m}" for m in new_items])
-                )
-
-        else:
-            print("No new shows since last check.")
-
-        # STEP 5: ALWAYS save current state (important fix)
-        with open(STATE_FILE, "w") as f:
-            f.write("\n".join(sorted(current)))
+            print(f"❓ UNKNOWN: Received status {resp.status_code}")
 
     except Exception as e:
-        print(f"Fatal error: {e}")
+        print(f"❌ CRITICAL ERROR: {str(e)}")
+
+    print("--- TEST FINISHED ---")
+
+if __name__ == "__main__":
+    diagnostic_test()
