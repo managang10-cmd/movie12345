@@ -31,9 +31,11 @@ jobs:
           git fetch origin main
           # Reset to the latest remote state to avoid conflicts
           git reset --hard origin/main
-          # Add the file
-          git add known_movies.txt
-          # Commit only if there are actual changes
-          git commit -m "Update known movies" || echo "No changes to commit"
-          # Push the changes
-          git push origin main
+          if [ -f known_movies.txt ]; then
+            git add known_movies.txt
+            git commit -m "Update known movies" || echo "No changes to commit"
+            git push origin main
+          else
+            echo "File known_movies.txt not found, skipping git push."
+          fi
+          
