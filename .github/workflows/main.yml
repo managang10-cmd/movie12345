@@ -1,13 +1,13 @@
-name: BMS Hourly Tracker
+name: BMS Tracker 20min
 on:
   schedule:
-    - cron: '*/20 * * * *' # Runs exactly at the start of every hour
-  workflow_dispatch:     # Allows you to click "Run workflow" manually
+    - cron: '*/25 * * * *' # Runs every 20 minutes
+  workflow_dispatch:      # Allows manual "Run workflow" button
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Grants the bot permission to save the movie list back to your repo
+    # --- CRITICAL: This allows GitHub to save the known_movies.txt file ---
     permissions:
       contents: write
 
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Downloads full history so it can sync and push
+          fetch-depth: 0 # Downloads history to allow pushing updates
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -36,19 +36,20 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Only proceed if the file was created/updated
+          # Check if the file exists before trying to add it
           if [ -f known_movies.txt ]; then
             git add known_movies.txt
             
-            # Commit only if there are actual changes to the movie list
-            git commit -m "Update known movies [skip ci]" || exit 0
-            
-            # Use rebase to pull any remote changes and put our commit on top
-            # This prevents the "rejected" error
-            git pull --rebase origin main
-            
-            # Push the final result
-            git push origin main
+            # Commit only if there are changes (avoids errors if nothing new)
+            if git diff --staged --quiet; then
+              echo "No changes in movie list."
+            else
+              git commit -m "Update known movies [skip ci]"
+              
+              # Pull the latest to avoid 'rejected' error, then push
+              git pull --rebase origin main
+              git push origin main
+            fi
           else
-            echo "No known_movies.txt found. Skipping save step."
+            echo "known_movies.txt was not created by the script."
           fi
