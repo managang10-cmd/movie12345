@@ -27,8 +27,12 @@ jobs:
 
       - name: Run tracker
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          BOT_TOKEN_1: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID_1: ${{ secrets.CHAT_ID }}
+          BOT_TOKEN_2: ${{ secrets.BOT_TOKEN_2 }}
+          CHAT_ID_2: ${{ secrets.CHAT_ID_2 }}
+          BOT_TOKEN_3: ${{ secrets.BOT_TOKEN_3 }}
+          CHAT_ID_3: ${{ secrets.CHAT_ID_3 }}
         run: python tracker.py
 
       - name: Save and Sync State
