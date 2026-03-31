@@ -28,17 +28,19 @@ def extract_movies(html):
 # Main logic for a single run
 scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
 resp = scraper.get(THEATRE_URL)
+# ... inside your main logic ...
 if resp.status_code == 200:
     current = extract_movies(resp.text)
     
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
-            known = set(l.strip() for l in f.readlines())
-    else:
-        known = set()
+    # Ensure current is at least an empty set so the file can be created
+    if not current:
+        current = set()
 
+    # Save the state immediately to ensure the file exists for Git
+    with open(STATE_FILE, "w") as f:
+        f.write("\n".join(sorted(current)))
+    
+    # Now check for new items to send the alert
     new_items = current - known
     if new_items:
         send_telegram(f"🎬 *New Shows!* \n" + "\n".join(new_items))
-        with open(STATE_FILE, "w") as f:
-            f.write("\n".join(current))
