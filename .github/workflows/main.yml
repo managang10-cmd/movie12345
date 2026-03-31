@@ -1,7 +1,7 @@
 name: BMS Hourly Tracker
 on:
   schedule:
-    - cron: '0 * * * *' # Runs exactly at the start of every hour
+    - cron: '*/20 * * * *' # Runs exactly at the start of every hour
   workflow_dispatch:     # Allows you to click "Run workflow" manually
 
 jobs:
