@@ -41,8 +41,7 @@ jobs:
           git config --local user.name "GitHub Action"
           
           # Check if the file exists before trying to add it
-          if [ -f known_movies.txt ]; then
-            git add known_movies.txt
+          git add known_movies_*.txt
             
             # Commit only if there are changes (avoids errors if nothing new)
             if git diff --staged --quiet; then
