@@ -147,6 +147,10 @@ def main():
                 resp = scraper.get(theatre['url'], headers=headers, timeout=30)
                 
                 if resp.status_code == 200:
+                    if CHECK_DATE not in resp.url:
+                        print(f"  ⚠️ REDIRECTED to {resp.url.split('/')[-1]}. Date {CHECK_DATE} is not open yet.")
+                        success = True # Mark as "done" for this theatre but skip processing
+                        break
                     current_movies = extract_movies_with_timings(resp.text)
                     current = set(current_movies.keys())
                     print(f"  ✓ Found {len(current)} movies")
