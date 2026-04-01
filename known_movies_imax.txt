@@ -1,4 +1,4 @@
-Biker|Telugu 2D:8:00 AM [PCX HDR by BARCO],8:00 AM [PCX SCREEN],11:05 AM [BARCO Flagship 4K Laser],1:15 PM [PCX HDR by BARCO],2:15 PM [PCX SCREEN],3:25 PM [PCX HDR by BARCO],5:15 PM [BARCO Flagship 4K Laser],8:30 PM [PCX SCREEN],11:20 PM [BARCO Flagship 4K Laser],11:40 PM [PCX SCREEN]
+Biker|Telugu 2D:8:00 AM [PCX SCREEN],8:00 AM [PCX HDR by BARCO],11:05 AM [BARCO Flagship 4K Laser],1:15 PM [PCX HDR by BARCO],2:15 PM [PCX SCREEN],3:25 PM [PCX HDR by BARCO],5:15 PM [BARCO Flagship 4K Laser],8:30 PM [PCX SCREEN],11:20 PM [BARCO Flagship 4K Laser],11:40 PM [PCX SCREEN]
 Carmeni Selvam|Tamil 2D:6:30 PM;Telugu 2D:10:00 AM
 Dhurandhar The Revenge|Hindi 2D:8:00 AM,12:10 PM,7:20 PM [PCX HDR by BARCO],10:35 PM;Telugu 2D:6:20 PM
 Neelira|Tamil 2D:4:20 PM
