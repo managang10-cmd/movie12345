@@ -1,9 +1,11 @@
+Biker|Telugu 2D:8:00 AM [BARCO Flagship 4K Laser],11:05 AM [BARCO Flagship 4K Laser],1:15 PM [PCX HDR by BARCO],2:15 PM [PCX SCREEN],5:15 PM [BARCO Flagship 4K Laser],8:30 PM [PCX SCREEN],11:20 PM [BARCO Flagship 4K Laser],11:40 PM [PCX SCREEN]
 Carmeni Selvam|Tamil 2D:6:20 PM;Telugu 2D:10:00 AM
 Dhurandhar The Revenge|Hindi 2D:8:00 AM,12:10 PM,7:20 PM [PCX HDR by BARCO],10:35 PM;Telugu 2D:6:20 PM
 Neelira|Tamil 2D:4:20 PM
-Project Hail Mary|English:11:10 AM [PCX SCREEN],4:20 PM [PCX HDR by BARCO],5:25 PM [PCX SCREEN],11:30 PM [PCX HDR by BARCO]
+Project Hail Mary|English:11:10 AM [PCX SCREEN],4:20 PM [PCX HDR by BARCO],5:25 PM [PCX SCREEN],8:20 PM [BARCO Flagship 4K Laser],11:30 PM [PCX HDR by BARCO]
+Raakaasa|Telugu 2D:9:00 AM,11:35 AM,4:10 PM,8:45 PM,11:20 PM
 Ready or Not 2: Here I Come|English:11:20 PM
-The Drama|English 2D:9:10 PM
+The Drama|English 2D:11:05 AM,9:10 PM
 The Super Mario Galaxy Movie|English:2:10 PM,6:45 PM
 Vaazha 2: Biopic of a Billion Bros|Malayalam:2:10 PM [BARCO Flagship 4K Laser]
 Youth (Telugu)|Telugu 2D:12:45 PM
