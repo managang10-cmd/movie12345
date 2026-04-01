@@ -1,48 +1,48 @@
-name: BMS Tracker 20min
-on:
-  schedule:
-    - cron: '13,33,53 * * * *' # Runs every 20 minutes
-  workflow_dispatch:
+# name: BMS Tracker 20min
+# on:
+#   schedule:
+#     - cron: '13,33,53 * * * *' # Runs every 20 minutes
+#   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.9'
 
-      - name: Install dependencies
-        run: pip install cloudscraper beautifulsoup4 requests
+#       - name: Install dependencies
+#         run: pip install cloudscraper beautifulsoup4 requests
 
-      - name: Run tracker
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-          BOT_TOKEN_2: ${{ secrets.BOT_TOKEN_2 }}
-          CHAT_ID_2: ${{ secrets.CHAT_ID_2 }}
-          BOT_TOKEN_3: ${{ secrets.BOT_TOKEN_3 }}
-          CHAT_ID_3: ${{ secrets.CHAT_ID_3 }}
-        run: python tracker.py
+#       - name: Run tracker
+#         env:
+#           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+#           CHAT_ID: ${{ secrets.CHAT_ID }}
+#           BOT_TOKEN_2: ${{ secrets.BOT_TOKEN_2 }}
+#           CHAT_ID_2: ${{ secrets.CHAT_ID_2 }}
+#           BOT_TOKEN_3: ${{ secrets.BOT_TOKEN_3 }}
+#           CHAT_ID_3: ${{ secrets.CHAT_ID_3 }}
+#         run: python tracker.py
 
-      - name: Save and Sync State
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add known_movies_*.txt
-          if ! git diff --staged --quiet; then
-            git commit -m "Update known movies [skip ci]"
-            git pull --rebase origin main
-            git push origin main
-          else
-            echo "No changes in movie list."
-          fi
+#       - name: Save and Sync State
+#         run: |
+#           git config --local user.email "action@github.com"
+#           git config --local user.name "GitHub Action"
+#           git add known_movies_*.txt
+#           if ! git diff --staged --quiet; then
+#             git commit -m "Update known movies [skip ci]"
+#             git pull --rebase origin main
+#             git push origin main
+#           else
+#             echo "No changes in movie list."
+#           fi
