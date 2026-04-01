@@ -1,18 +1,36 @@
 import os, re, requests, cloudscraper, time, json
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 # ── CONFIGURATION ────────────────────────
 CHECK_DATE  = "20260402" 
-THEATRE_URL = f"https://in.bookmyshow.com/cinemas/hyderabad/allu-cinemas-kokapet/buytickets/ALUC/{CHECK_DATE}"
-STATE_FILE  = "known_movies.txt"
+
+# Multiple Theatres Configuration
+THEATRES = [
+    {
+        "name": "Allu Cinemas - Kokapet",
+        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/allu-cinemas-kokapet/buytickets/ALUC/{CHECK_DATE}",
+        "state_file": "known_movies_allu.txt"
+    },
+    {
+        "name": "Prasads Imax",
+        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/prasads-multiplex-hyderabad/buytickets/PRHN/{CHECK_DATE}",
+        "state_file": "known_movies_imax.txt"
+    },
+    # Add more theatres like this:
+    {
+        "name": "ART Cinemas",
+        "url": "https://in.bookmyshow.com/cinemas/hyderabad/art-cinemas-vanasthalipuram/buytickets/ACEV/{CHECK_DATE}",
+        "state_file": "known_movies_art.txt"
+    }
+]
 
 # Multiple Bot Configurations
 TELEGRAM_CONFIGS = [
     {"bot_token": os.getenv("BOT_TOKEN"), "chat_id": os.getenv("CHAT_ID")},
     {"bot_token": os.getenv("BOT_TOKEN_2"), "chat_id": os.getenv("CHAT_ID_2")},
     {"bot_token": os.getenv("BOT_TOKEN_3"), "chat_id": os.getenv("CHAT_ID_3")},
-    # Add more as needed
 ]
 
 def send_telegram(msg, bot_token, chat_id):
@@ -46,34 +64,46 @@ def send_to_all_chats(msg):
     print(f"✨ Successfully sent to {success_count}/{len(results)} destinations")
     return success_count > 0
 
-def extract_movies(html):
+def extract_movies_with_timings(html):
+    """Extract movie titles and their timings"""
     soup = BeautifulSoup(html, "html.parser")
-    movies = set()
-    # Looking for movie titles in common BMS structures
+    movies_data = {}  # {movie_name: [timings]}
+    
+    # Looking for movie titles and timings in common BMS structures
     for script in soup.find_all("script"):
         text = script.string or ""
-        patterns = [r'"EventTitle"\s*:\s*"([^"]+)"', r'"movieName"\s*:\s*"([^"]+)"']
-        for pattern in patterns:
-            for match in re.findall(pattern, text):
-                if 2 < len(match) < 60: 
-                    movies.add(match.strip())
+        
+        # Extract movie titles
+        movie_pattern = r'"EventTitle"\s*:\s*"([^"]+)"'
+        for match in re.findall(movie_pattern, text):
+            if 2 < len(match) < 60:
+                movie_name = match.strip()
+                if movie_name not in movies_data:
+                    movies_data[movie_name] = []
+        
+        # Extract timings (HH:MM format)
+        timing_pattern = r'"showtime"\s*:\s*"(\d{2}:\d{2})"'
+        for match in re.findall(timing_pattern, text):
+            timing = match.strip()
     
-    # Backup: Look for standard links/titles if scripts are obfuscated
-    for item in soup.find_all(['a', 'div'], attrs={'data-event-title': True}):
-        movies.add(item['data-event-title'].strip())
-
-    noise = {"allu", "cinemas", "kokapet", "hyderabad", "bookmyshow"}
-    return {m for m in movies if m.lower() not in noise and len(m) > 2}
+    # Backup: Look for data attributes
+    for item in soup.find_all(['div', 'a'], attrs={'data-event-title': True}):
+        movie_name = item.get('data-event-title', '').strip()
+        if movie_name and 2 < len(movie_name) < 60:
+            if movie_name not in movies_data:
+                movies_data[movie_name] = []
+    
+    # Filter noise
+    noise = {"allu", "cinemas", "kokapet", "hyderabad", "bookmyshow", "pvr", "paradise"}
+    filtered = {m: t for m, t in movies_data.items() 
+                if m.lower() not in noise and len(m) > 2}
+    
+    return filtered
 
 def main():
     print("--- STARTING STEALTH CHECK ---")
+    print(f"🕐 Check Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
-    known = set()
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
-            known = set(line.strip() for line in f if line.strip())
-        print(f"Loaded {len(known)} movies from history.")
-
     # Enhanced Stealth Scraper
     scraper = cloudscraper.create_scraper(
         browser={
@@ -83,7 +113,7 @@ def main():
         }
     )
     
-    # Professional Headers to mimic a real Windows Chrome user
+    # Professional Headers
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
@@ -97,43 +127,69 @@ def main():
         'Sec-Fetch-User': '?1'
     }
 
-    success = False
-    for attempt in range(3):
-        try:
-            print(f"Attempt {attempt + 1}...")
-            resp = scraper.get(THEATRE_URL, headers=headers, timeout=30)
-            
-            if resp.status_code == 200:
-                current = extract_movies(resp.text)
-                print(f"Found on page: {current}")
-                
-                new_items = current - known
-                
-                # Update history file
-                with open(STATE_FILE, "w") as f:
-                    f.write("\n".join(sorted(current)))
-                
-                if new_items:
-                    msg = f"🎬 *New Show Added!*\n\n" + "\n".join([f"• {m}" for m in new_items])
-                    send_to_all_chats(msg)  # Send to all bots/chats
-                    print(f"Alert sent!")
-                else:
-                    print("No new movies found.")
-                
-                success = True
-                break
-            elif resp.status_code == 403:
-                print("BMS blocked us (403). Trying again with slight delay...")
-                time.sleep(10)
-            else:
-                print(f"Status {resp.status_code}. Retrying...")
-                time.sleep(5)
-        except Exception as e:
-            print(f"Error: {e}")
-            time.sleep(5)
+    # Check each theatre
+    for theatre in THEATRES:
+        print(f"\n🎭 Checking: {theatre['name']}")
+        print(f"🔗 URL: {theatre['url']}\n")
+        
+        known = set()
+        state_file = theatre['state_file']
+        
+        if os.path.exists(state_file):
+            with open(state_file, "r") as f:
+                known = set(line.strip() for line in f if line.strip())
+            print(f"✓ Loaded {len(known)} movies from history.")
 
-    if not success:
-        print("Scrape failed. Cloudflare or BMS Firewall is high today.")
+        success = False
+        for attempt in range(3):
+            try:
+                print(f"  Attempt {attempt + 1}...")
+                resp = scraper.get(theatre['url'], headers=headers, timeout=30)
+                
+                if resp.status_code == 200:
+                    current_movies = extract_movies_with_timings(resp.text)
+                    current = set(current_movies.keys())
+                    print(f"  ✓ Found {len(current)} movies")
+                    
+                    new_items = current - known
+                    
+                    # Update history file
+                    with open(state_file, "w") as f:
+                        f.write("\n".join(sorted(current)))
+                    
+                    if new_items:
+                        timestamp = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+                        msg = f"🎬 *NEW MOVIE ALERT!*\n"
+                        msg += f"🏢 *Theatre:* {theatre['name']}\n"
+                        msg += f"📅 *Date:* {timestamp}\n"
+                        msg += f"🔗 *URL:* {theatre['url']}\n\n"
+                        msg += "*New Movies:*\n"
+                        
+                        for movie in sorted(new_items):
+                            msg += f"• {movie}\n"
+                        
+                        send_to_all_chats(msg)
+                        print(f"  ✨ Alert sent for {len(new_items)} new movie(s)!")
+                    else:
+                        print(f"  ℹ️  No new movies.")
+                    
+                    success = True
+                    break
+                elif resp.status_code == 403:
+                    print(f"  ⚠️  Blocked (403). Retrying with delay...")
+                    time.sleep(10)
+                else:
+                    print(f"  ⚠️  Status {resp.status_code}. Retrying...")
+                    time.sleep(5)
+            except Exception as e:
+                print(f"  ❌ Error: {e}")
+                time.sleep(5)
+
+        if not success:
+            print(f"  ❌ Failed to scrape {theatre['name']}")
+        
+        # Delay between theatres
+        time.sleep(3)
 
 if __name__ == "__main__":
     main()
