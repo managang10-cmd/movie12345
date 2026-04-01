@@ -21,7 +21,7 @@ THEATRES = [
     # Add more theatres like this:
     {
         "name": "ART Cinemas",
-        "url": "https://in.bookmyshow.com/cinemas/hyderabad/art-cinemas-vanasthalipuram/buytickets/ACEV/{CHECK_DATE}",
+        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/art-cinemas-vanasthalipuram/buytickets/ACEV/{CHECK_DATE}",
         "state_file": "known_movies_art.txt"
     }
 ]
