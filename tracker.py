@@ -232,6 +232,7 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     """
     ts  = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     msg = f"🎬 *NEW SHOW ALERT!*\n"
+    msg += f"Marchipokunda mottam msg chudandiiii\n"
     msg += f"🏢 *Theatre:* {theatre_name}\n"
     msg += f"📅 *At:* {ts}\n"
     msg += f"🔗 [Book Now]({theatre_url})\n"
@@ -253,6 +254,7 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
             for lang, times in sorted(langs.items()):
                 msg += f"  `{lang}` → {' | '.join(times)}\n"
 
+    msg += f"Love U Darling.......................❤️❤️❤️\n"
     return msg
 
 
