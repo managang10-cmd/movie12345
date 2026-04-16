@@ -32,6 +32,11 @@ jobs:
           CHAT_ID_2: ${{ secrets.CHAT_ID_2 }}
           BOT_TOKEN_3: ${{ secrets.BOT_TOKEN_3 }}
           CHAT_ID_3: ${{ secrets.CHAT_ID_3 }}
+          BOT_TOKEN_NAGESH: ${{ secrets.BOT_TOKEN_NAGESH }}
+          CHAT_ID_NAGESH: ${{ secrets.CHAT_ID_NAGESH }}
+          BOT_TOKEN_JERRY: ${{ secrets.BOT_TOKEN_JERRY }}
+          CHAT_ID_JERRY: ${{ secrets.CHAT_ID_JERRY }}
+          
         run: python tracker.py
 
       - name: Save and Sync State
