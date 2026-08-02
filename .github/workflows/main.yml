@@ -36,6 +36,8 @@ jobs:
           CHAT_ID_NAGESH: ${{ secrets.CHAT_ID_NAGESH }}
           BOT_TOKEN_JERRY: ${{ secrets.BOT_TOKEN_JERRY }}
           CHAT_ID_JERRY: ${{ secrets.CHAT_ID_JERRY }}
+          BOT_TOKEN_SATHPREM: ${{ secrets.BOT_TOKEN_SATHPREM }}
+          CHAT_ID_SATHPREM: ${{ secrets.CHAT_ID_SATHPREM }}
           
         run: python tracker.py
 
