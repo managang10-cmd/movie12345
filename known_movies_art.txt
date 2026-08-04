@@ -1,6 +1,6 @@
 DC|Telugu 2D:10:40 AM [4K ATMOS],1:35 PM [4K ATMOS],3:50 PM [4K ATMOS],7:40 PM [4K ATMOS],10:00 PM [4K ATMOS]
 Dookudu|Telugu 2D:12:55 PM [4K]
 Hanuman Ansh|Hindi 2D:4:45 PM [4K]
-Korean Kanakaraju|Telugu 2D:9:50 AM [4K],12:40 PM [4K ATMOS],4:30 PM [4K ATMOS],6:45 PM [4K ATMOS],10:50 PM [4K ATMOS]
-Spider-Man: Brand New Day|English:9:50 AM [EPIQ],12:55 PM [EPIQ],4:05 PM [EPIQ],7:15 PM [EPIQ],10:30 PM [EPIQ]
+Korean Kanakaraju|Telugu 2D:9:55 AM [4K],12:40 PM [4K ATMOS],4:30 PM [4K ATMOS],6:45 PM [4K ATMOS],10:50 PM [4K ATMOS]
+Spider-Man: Brand New Day|English:9:50 AM [EPIQ],1:00 PM [EPIQ],4:05 PM [EPIQ],7:15 PM [EPIQ],10:30 PM [EPIQ]
 Yamudu|Telugu 2D:10:35 AM [4K]
