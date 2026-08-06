@@ -1,5 +1,8 @@
-DC|Tamil 2D:8:00 AM
-Dookudu|Telugu 2D:8:00 AM
+Anakapalli|Telugu 2D:12:50 PM
+Chennai Love Story|Telugu 2D:2:15 PM,8:05 PM
+DC|Tamil 2D:8:00 AM,11:05 AM [BARCO 4K LASER],1:50 PM [BARCO 4K LASER],8:00 PM [BARCO 4K LASER],10:50 PM [BARCO 4K LASER];Telugu 2D:11:20 PM
+Dookudu|Telugu 2D:8:00 AM,11:10 AM
+Korean Kanakaraju|Telugu 2D:10:45 AM,1:50 PM,4:55 PM,8:00 PM,11:05 PM
 Spider-Man: Brand New Day|English:8:15 AM [BARCO 4K LASER],11:35 AM [PCX SCREEN],2:30 PM [PCX SCREEN],5:25 PM [PCX SCREEN],8:20 PM [PCX SCREEN],11:15 PM [PCX SCREEN]
 The Odyssey|English:1:20 PM [PCX HDR by BARCO],4:35 PM [PCX HDR by BARCO],7:50 PM [PCX HDR by BARCO],11:05 PM [PCX HDR by BARCO];English 2D:8:05 AM [PCX SCREEN]
-Thudakkam|Malayalam 2D:8:00 AM
+Thudakkam|Malayalam 2D:8:00 AM,5:30 PM
