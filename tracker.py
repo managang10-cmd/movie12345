@@ -62,6 +62,7 @@ TELEGRAM_CONFIGS = [
   {"bot_token": os.getenv("BOT_TOKEN_JERRY"), "chat_id": os.getenv("CHAT_ID_JERRY")},
     {"bot_token": os.getenv("BOT_TOKEN_SATHPREM"), "chat_id": os.getenv("CHAT_ID_SATHPREM")},
     {"bot_token": os.getenv("BOT_TOKEN_SAMOSA"), "chat_id": os.getenv("CHAT_ID_SAMOSA")},
+    {"bot_token": os.getenv("BOT_TOKEN_SANKA"), "chat_id": os.getenv("CHAT_ID_SANKA")},
 ]
 
 # ── Telegram ─────────────────────────────
