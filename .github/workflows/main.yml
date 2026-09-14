@@ -40,6 +40,8 @@ jobs:
           CHAT_ID_SATHPREM: ${{ secrets.CHAT_ID_SATHPREM }}
           BOT_TOKEN_SAMOSA: ${{ secrets.BOT_TOKEN_SAMOSA }}
           CHAT_ID_SAMOSA: ${{ secrets.CHAT_ID_SAMOSA }}
+          BOT_TOKEN_SANKA: ${{ secrets.BOT_TOKEN_SANKA }}
+          CHAT_ID_SANKA: ${{ secrets.CHAT_ID_SANKA }}
           
         run: python tracker.py
 
