@@ -73,7 +73,7 @@ EMAIL_FROM    = os.getenv("EMAIL_FROM", "")
 
 EMAIL_TO_LIST = [
     # "gudipatisaicharan711@gmail.com",
-    "test@gmail.com",
+    "dandiaamigos@gmail.com",
     # "sreekargudipati005@gmail.com",
 ]
 
