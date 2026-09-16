@@ -1,14 +1,9 @@
-Bethlehem Kudumba Unit|Telugu:5:45 PM [BARCO 4K SMART LASER],11:30 PM [BARCO 4K SMART LASER/BARCO 4K LASER]
-Demon Slayer: Kimetsu no Yaiba Infinity Castle|Japanese:11:50 AM [BARCO 4K LASER]
-Epic|Telugu 2D:11:50 AM,2:45 PM [BARCO 4K LASER],8:45 PM,11:35 PM
+Bethlehem Kudumba Unit|Telugu:11:30 PM [BARCO 4K SMART LASER/BARCO 4K LASER]
+Epic|Telugu 2D:8:45 PM,11:35 PM
 Fall 2: Deadpoint|English 2D:11:45 PM
-Haiwaan|Hindi 2D:2:30 PM,11:15 PM
-Hanuman Ansh|Hindi 2D:5:35 PM,8:25 PM
-Irumudi|Telugu 2D:5:30 PM [BARCO 4K LASER]
-Mahendragiri Varahi|Telugu:3:10 PM,8:50 PM
-Mandaadi|Tamil:2:55 PM,8:40 PM;Telugu:12:05 PM,11:30 PM
-Mirzapur: The Movie|Hindi 2D:12:00 PM [PCX SCREEN],7:15 PM [PCX SCREEN],11:00 PM [PCX SCREEN]
-Romanchakam|Telugu 2D:6:05 PM
-Sardar 2|Tamil 2D:8:15 PM [BARCO 4K LASER];Telugu 2D:2:40 PM
-Spider-Man: Brand New Day|English:6:00 PM
-The Odyssey|English 2D:3:45 PM [PCX SCREEN]
+Haiwaan|Hindi 2D:11:15 PM
+Hanuman Ansh|Hindi 2D:8:25 PM
+Mahendragiri Varahi|Telugu:8:50 PM
+Mandaadi|Tamil HDR By Barco:8:35 PM;Telugu:11:30 PM
+Mirzapur: The Movie|Hindi 2D:10:55 PM [PCX SCREEN]
+Sardar 2|Tamil 2D:8:15 PM [BARCO 4K LASER]
