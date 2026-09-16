@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 # ── CONFIGURATION ────────────────────────
-CHECK_DATE  = "20260924"
+CHECK_DATE  = "20260916"
 
 THEATRES = [
     {
@@ -65,6 +65,19 @@ TELEGRAM_CONFIGS = [
     {"bot_token": os.getenv("BOT_TOKEN_SANKA"), "chat_id": os.getenv("CHAT_ID_SANKA")},
 ]
 
+# ── Email config (via Brevo, free 300/day, API-key based — no password shared) ──
+# BREVO_API_KEY and EMAIL_FROM still come from GitHub secrets (Settings > Secrets > Actions).
+# EMAIL_TO is hardcoded here directly — just edit the list below with your recipients.
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+EMAIL_FROM    = os.getenv("EMAIL_FROM", "")
+
+EMAIL_TO_LIST = [
+    "person1@example.com",
+    "person2@example.com",
+    "person3@example.com",
+]
+
+
 # ── Telegram ─────────────────────────────
 def send_telegram(msg, bot_token, chat_id):
     if not bot_token or not chat_id:
@@ -84,12 +97,51 @@ def send_to_all_chats(msg):
     valid = [c for c in TELEGRAM_CONFIGS if c["bot_token"] and c["chat_id"]]
     if not valid:
         print("⚠️  No Telegram credentials configured.")
-        return
-    with ThreadPoolExecutor(max_workers=len(valid)) as ex:
-        results = list(ex.map(
-            lambda c: send_telegram(msg, c["bot_token"], c["chat_id"]), valid
-        ))
-    print(f"✨ Sent to {sum(results)}/{len(results)} destinations")
+    else:
+        with ThreadPoolExecutor(max_workers=len(valid)) as ex:
+            results = list(ex.map(
+                lambda c: send_telegram(msg, c["bot_token"], c["chat_id"]), valid
+            ))
+        print(f"✨ Sent to {sum(results)}/{len(results)} Telegram destinations")
+
+    # Also fire off email in parallel with Telegram
+    send_email(msg)
+
+
+# ── Email ─────────────────────────────────
+def send_email(msg_body, subject="🎬 New BMS Show Alert!"):
+    """Sends the alert text as an email via Brevo's transactional email API.
+    Free tier: 300 emails/day. Uses a revocable API key — never your account password."""
+    if not BREVO_API_KEY or not EMAIL_FROM or not EMAIL_TO_LIST:
+        print("⚠️  Email not configured (BREVO_API_KEY / EMAIL_FROM / EMAIL_TO_LIST missing) — skipping.")
+        return False
+
+    recipients = [addr.strip() for addr in EMAIL_TO_LIST if addr.strip()]
+    if not recipients:
+        return False
+
+    payload = {
+        "sender": {"email": EMAIL_FROM, "name": "BMS Tracker"},
+        "to": [{"email": r} for r in recipients],
+        "subject": subject,
+        "textContent": msg_body,
+    }
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+    }
+
+    try:
+        r = requests.post("https://api.brevo.com/v3/smtp/email", json=payload, headers=headers, timeout=20)
+        if r.status_code in (200, 201):
+            print(f"✅ Email sent to {len(recipients)} recipient(s)")
+            return True
+        print(f"❌ Email failed: {r.status_code} {r.text}")
+        return False
+    except Exception as e:
+        print(f"❌ Email failed: {e}")
+        return False
 
 
 # ── Extraction ────────────────────────────
