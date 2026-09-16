@@ -289,10 +289,16 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     all_movies = list(new_movies.keys()) + list(new_shows.keys())
     first_movie = all_movies[0].upper() if all_movies else "NEW SHOW"
     ts  = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    try:
+        formatted_date = datetime.strptime(CHECK_DATE, "%Y%m%d").strftime(
+            "%d %b %Y"
+        )
+    except ValueError:
+        formatted_date = CHECK_DATE
     msg = f"🎬 *[{first_movie}] - NEW SHOW ALERT!*\n"
     msg += f"Marchipokunda mottam msg chudandiiii\n"
     msg += f"🏢 *Theatre:* {theatre_name}\n"
-    msg += f"📅 *At:* {CHECK_DATE}\n"
+    msg += f"📅 *At:* {formatted_date}\n"
     msg += f"🔗 [Book Now]({theatre_url})\n"
 
     if new_movies:
