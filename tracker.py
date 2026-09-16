@@ -72,8 +72,9 @@ BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 EMAIL_FROM    = os.getenv("EMAIL_FROM", "")
 
 EMAIL_TO_LIST = [
-    "gudipatisaicharan711@gmail.com",
-    "sreekargudipati005@gmail.com",
+    # "gudipatisaicharan711@gmail.com",
+    "test@gmail.com",
+    # "sreekargudipati005@gmail.com",
 ]
 
 
