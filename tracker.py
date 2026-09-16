@@ -287,6 +287,7 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     """
     ts  = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     msg = f"🎬 *NEW SHOW ALERT!*\n"
+    msg = f" Checking Date {CHECK_DATE}\n"
     msg += f"Marchipokunda mottam msg chudandiiii\n"
     msg += f"🏢 *Theatre:* {theatre_name}\n"
     msg += f"📅 *At:* {ts}\n"
