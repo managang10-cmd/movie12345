@@ -285,9 +285,12 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     new_movies: { movie: { lang: [times] } }  — brand new movies
     new_shows:  { movie: { lang: [new_times] } } — new slots for existing movies
     """
+    # Extract the first movie name for the push notification title
+    all_movies = list(new_movies.keys()) + list(new_shows.keys())
+    first_movie = all_movies[0].upper() if all_movies else "NEW SHOW"
     ts  = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-    msg = f"🎬 *NEW SHOW ALERT!*\n"
-    msg = f" Checking Date {CHECK_DATE}\n"
+    msg = f"🎬 *[{first_movie}] - NEW SHOW ALERT!*\n"
+    msg += f"📅 *Checking Date:* {CHECK_DATE}\n"
     msg += f"Marchipokunda mottam msg chudandiiii\n"
     msg += f"🏢 *Theatre:* {theatre_name}\n"
     msg += f"📅 *At:* {ts}\n"
