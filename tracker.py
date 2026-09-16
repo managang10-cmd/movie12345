@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 # ── CONFIGURATION ────────────────────────
-CHECK_DATE  = "20260924"
+CHECK_DATE  = "20260916"
 
 THEATRES = [
     {
