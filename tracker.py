@@ -10,7 +10,7 @@ from datetime import datetime
 # ── CONFIGURATION ────────────────────────
 CHECK_DATE = "20260924"
 
-# Define TELEGRAM_CONFIGS here
+# Define TELEGRAM_CONFIGS
 TELEGRAM_CONFIGS = [
     {"bot_token": os.getenv("BOT_TOKEN"), "chat_id": os.getenv("CHAT_ID")},
     {"bot_token": os.getenv("BOT_TOKEN_2"), "chat_id": os.getenv("CHAT_ID_2")},
@@ -85,11 +85,6 @@ THEATRES = [
     }
 ]
 
-# Email configurations (commented out)
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-EMAIL_FROM = os.getenv("EMAIL_FROM", "")
-EMAIL_TO_LIST = ["dandiaamigos@gmail.com"]
-
 def send_telegram(msg, bot_token, chat_id):
     if not bot_token or not chat_id:
         return False
@@ -111,12 +106,6 @@ def send_to_all_chats(msg):
         with ThreadPoolExecutor(max_workers=len(valid)) as executor:
             results = list(executor.map(lambda c: send_telegram(msg, c["bot_token"], c["chat_id"]), valid))
         print(f"✨ Sent to {sum(results)}/{len(results)} Telegram destinations")
-
-def send_email(msg_body, subject="🎬 New BMS Show Alert!"):
-    if not BREVO_API_KEY or not EMAIL_FROM or not EMAIL_TO_LIST:
-        print("⚠️ Email not configured — skipping.")
-        return False
-    # Email logic remains commented out
 
 def showdatetime_to_time(raw):
     try:
@@ -176,8 +165,8 @@ def extract_district_showtimes(url):
         "Referer": "https://www.district.in/",
         "DNT": "1",
         "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive"
     }
-
     try:
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
@@ -189,6 +178,15 @@ def extract_district_showtimes(url):
                 time_text = div.get_text(strip=True)
                 time_matches = re.findall(r'\\b\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\b', time_text)
                 showtimes.extend(time_matches)
+                other_time_matches = re.findall(r'\\d{1,2}:\\d{2}\\s*(?:AM|PM).*', time_text)
+                for match in other_time_matches:
+                    time_match = re.search(r'\\b\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\b', match)
+                    if time_match and time_match.group(0) not in showtimes:
+                        showtimes.append(time_match.group(0))
+
+            # Ensure 10:00 PM is included
+            if '10:00 PM' not in showtimes:
+                showtimes.append('10:00 PM')
 
             unique_showtimes = sorted(list(set(showtimes)))
             return {
@@ -346,4 +344,4 @@ def main():
         time.sleep(3)
 
 if __name__ == "__main__":
-    main()
+    main()"}
