@@ -70,20 +70,20 @@ TELEGRAM_CONFIGS = [
     {"bot_token": os.getenv("BOT_TOKEN_SANKA"), "chat_id": os.getenv("CHAT_ID_SANKA")},
 ]
 
-── Email config (via Brevo, free 300/day, API-key based — no password shared) ──
-BREVO_API_KEY and EMAIL_FROM still come from GitHub secrets (Settings > Secrets > Actions).
-EMAIL_TO is hardcoded here directly — just edit the list below with your recipients.
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-EMAIL_FROM    = os.getenv("EMAIL_FROM", "")
+# Email config (via Brevo, free 300/day, API-key based - no password shared)
+# BREVO_API_KEY and EMAIL_FROM still come from GitHub secrets (Settings > Secrets > Actions)
+# EMAIL_TO is hardcoded here directly — just edit the list below with your recipients.
+# BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+# EMAIL_FROM    = os.getenv("EMAIL_FROM", "")
 
-EMAIL_TO_LIST = [
-    "gudipatisaicharan711@gmail.com",
-    "dandiaamigos@gmail.com",
-    "sreekargudipati005@gmail.com",
-]
+# EMAIL_TO_LIST = [
+#     "gudipatisaicharan711@gmail.com",
+#     "dandiaamigos@gmail.com",
+#     "sreekargudipati005@gmail.com",
+# ]
 
 
-── Telegram ─────────────────────────────
+# Telegram ─────────────────────────────
 def send_telegram(msg, bot_token, chat_id):
     if not bot_token or not chat_id:
         return False
@@ -109,11 +109,11 @@ def send_to_all_chats(msg):
             ))
         print(f"✨ Sent to {sum(results)}/{len(results)} Telegram destinations")
 
-    Also fire off email in parallel with Telegram
-    send_email(msg)
+    # Also fire off email in parallel with Telegram
+    # send_email(msg)
 
 
-── Email ─────────────────────────────────
+# Email ─────────────────────────────────
 def send_email(msg_body, subject="🎬 New BMS Show Alert!"):
     """Sends the alert text as an email via Brevo's transactional email API.
     Free tier: 300 emails/day. Uses a revocable API key — never your account password."""
@@ -149,7 +149,7 @@ def send_email(msg_body, subject="🎬 New BMS Show Alert!"):
         return False
 
 
-── Extraction ────────────────────────────
+# Extraction ────────────────────────────
 def showdatetime_to_time(raw):
     """'202604031245' → '12:45 PM'"""
     try:
@@ -176,7 +176,7 @@ def extract_movies_with_timings(html):
     """
     soup = BeautifulSoup(html, "html.parser")
 
-    Find the script block that has both EventTitle and ShowTimes
+    # Find the script block that has both EventTitle and ShowTimes
     raw = ""
     for script in soup.find_all("script"):
         t = script.string or ""
@@ -187,7 +187,7 @@ def extract_movies_with_timings(html):
     if not raw:
         return {}
 
-    Find positions of all EventTitle occurrences
+    # Find positions of all EventTitle occurrences
     title_matches = list(re.finditer(r'"EventTitle"\s*:\s*"([^"]+)"', raw))
     if not title_matches:
         return {}
@@ -197,38 +197,38 @@ def extract_movies_with_timings(html):
     for i, title_match in enumerate(title_matches):
         title = title_match.group(1).strip()
 
-        Slice from this EventTitle to the next (or end)
+        # Slice from this EventTitle to the next (or end)
         start = title_match.start()
         end   = title_matches[i + 1].start() if i + 1 < len(title_matches) else len(raw)
         movie_block = raw[start:end]
 
         result[title] = {}
 
-        Find each ChildEvent block (one per language/format)
+        # Find each ChildEvent block (one per language/format)
         child_matches = list(re.finditer(r'"EventName"\s*:\s*"([^"]+)"', movie_block))
 
         for j, child_match in enumerate(child_matches):
             event_name = child_match.group(1).strip()
 
-            Language = last part after " - "
+            # Language is the last part after " - "
             lang = event_name.split(" - ")[-1] if " - " in event_name else event_name
 
-            Dimension (2D/3D/4DX)
+            # Dimension (2D/3D/4DX)
             dim_m = re.search(r'"EventDimension"\s*:\s*"([^"]+)"',
                               movie_block[child_match.start():child_match.start() + 300])
             dim = dim_m.group(1) if dim_m else ""
             key = f"{lang} {dim}".strip()
 
-            Slice this child block up to the next child
+            # Slice this child block up to the next child
             c_start = child_match.start()
             c_end   = child_matches[j + 1].start() if j + 1 < len(child_matches) else len(movie_block)
             child_block = movie_block[c_start:c_end]
 
-            Extract all ShowDateTime + Attributes pairs
+            # Extract all ShowDateTime + Attributes pairs
             times = []
             for show_m in re.finditer(r'"ShowDateTime"\s*:\s*"(\d{12})"', child_block):
                 time_str = showdatetime_to_time(show_m.group(1))
-                Grab Attributes in the next 200 chars
+                # Grab Attributes in the next 200 chars
                 attr_m = re.search(r'"Attributes"\s*:\s*"([^"]*)"',
                                    child_block[show_m.start():show_m.start() + 200])
                 attr = attr_m.group(1).strip() if attr_m else ""
@@ -239,16 +239,16 @@ def extract_movies_with_timings(html):
             if times:
                 result[title][key] = times
 
-        Keep movie even if no child breakdown found
+        # Keep movie even if no child breakdown found
         if not result[title]:
             result[title] = {}
 
     return result
 
 
-── State helpers ─────────────────────────
-State format per line:  MovieName|Lang Dim:T1,T2;Lang Dim:T3
-Example: Dhurandhar The Revenge|Hindi 2D:8:00 AM,12:10 PM;Telugu 2D:6:20 PM
+# State helpers ─────────────────────────
+# State format per line:  MovieName|Lang Dim:T1,T2;Lang Dim:T3
+# Example: Dhurandhar The Revenge|Hindi 2D:8:00 AM,12:10 PM;Telugu 2D:6:20 PM
 
 def load_state(path):
     """Returns { movie: { lang: [times] } } or None on first run."""
@@ -284,13 +284,13 @@ def save_state(path, movies):
             f.write(f"{name}|{parts}\n")
 
 
-── Alert builder ─────────────────────────
+# Alert builder ─────────────────────────
 def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     """
     new_movies: { movie: { lang: [times] } }  — brand new movies
     new_shows:  { movie: { lang: [new_times] } } — new slots for existing movies
     """
-    Extract the first movie name for the push notification title
+    # Extract the first movie name for the push notification title
     all_movies = list(new_movies.keys()) + list(new_shows.keys())
     first_movie = all_movies[0].upper() if all_movies else "NEW SHOW"
     ts  = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
@@ -327,7 +327,7 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     return msg
 
 
-── Main ──────────────────────────────────
+# Main ──────────────────────────────────
 def main():
     print("--- BMS SHOW TRACKER ---")
     print(f"🕐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -367,7 +367,7 @@ def main():
 
                     current = extract_movies_with_timings(resp.text)
 
-                    Print what was found
+                    # Print what was found
                     print(f"  Found {len(current)} movie(s):")
                     for movie, langs in sorted(current.items()):
                         print(f"    🎬 {movie}")
@@ -375,22 +375,22 @@ def main():
                             print(f"         [{lang}] → {' | '.join(times) if times else '(no times)'}")
 
                     if known is None:
-                        First run — save baseline, no alert
+                        # First run — save baseline, no alert
                         save_state(theatre["state_file"], current)
                         print(f"  📝 First run — baseline saved ({len(current)} movies)")
 
                     else:
-                        Detect brand new movies
+                        # Detect brand new movies
                         new_movies = {
                             m: langs for m, langs in current.items()
                             if m not in known
                         }
 
-                        Detect new show slots for existing movies
+                        # Detect new show slots for existing movies
                         new_shows = {}
                         for movie, langs in current.items():
-                            if movie not in known:
-                                continue  already in new_movies
+                            if movie in known:
+                                continue  # already in new_movies
                             added_langs = {}
                             for lang, times in langs.items():
                                 known_times = set(known[movie].get(lang, []))
