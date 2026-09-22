@@ -51,6 +51,11 @@ THEATRES = [
     "name": "sri sai ram",
     "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sri-sai-ram-70mm-a-c-4k-laser-dolby-71malkajgiri/buytickets/SSRM/{CHECK_DATE}",
     "state_file": "known_movies_srisairam.txt"
+  },
+    {
+    "name": "sudarshan - district",
+    "url": f"https://www.district.in/movies/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads-hyderabad-in-hyderabad-CD1065725?fromdate={CHECK_DATE}",
+    "state_file": "known_movies_sudarshan_district.txt"
   }
 ]
 
