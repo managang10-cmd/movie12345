@@ -159,47 +159,43 @@ def extract_movies_with_timings(html):
 
 def extract_district_showtimes(url):
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.district.in/",
-        "DNT": "1",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            time_divs = soup.find_all('div', class_=re.compile(r'time', re.IGNORECASE))
-            showtimes = []
-
-            for div in time_divs:
-                time_text = div.get_text(strip=True)
-                time_matches = re.findall(r'\\b\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\b', time_text)
-                showtimes.extend(time_matches)
-                other_time_matches = re.findall(r'\\d{1,2}:\\d{2}\\s*(?:AM|PM).*', time_text)
-                for match in other_time_matches:
-                    time_match = re.search(r'\\b\\d{1,2}:\\d{2}\\s*(?:AM|PM)\\b', match)
-                    if time_match and time_match.group(0) not in showtimes:
-                        showtimes.append(time_match.group(0))
-
-            # Ensure 10:00 PM is included
-            if '10:00 PM' not in showtimes:
-                showtimes.append('10:00 PM')
-
-            unique_showtimes = sorted(list(set(showtimes)))
-            return {
-                "The Paradise": {
-                    "Telugu 2D": unique_showtimes
-                }
-            }
-        else:
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code != 200:
             print(f"Failed to fetch data from District.in. Status code: {response.status_code}")
-            return {}
+            return None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        title_match = soup.find("h1")
+        title = title_match.get_text(strip=True) if title_match else "The Paradise"
+
+        time_divs = soup.find_all("div", class_=re.compile(r"time", re.IGNORECASE))
+        showtimes = []
+
+        for div in time_divs:
+            time_text = div.get_text(" ", strip=True)
+            matches = re.findall(r"\b\d{1,2}:\d{2}\s*(?:AM|PM)\b", time_text, flags=re.IGNORECASE)
+            for match in matches:
+                showtimes.append(match.upper())
+
+        if not showtimes:
+            for div in time_divs:
+                text = div.get_text(" ", strip=True)
+                match = re.search(r"\d{1,2}:\d{2}\s*(?:AM|PM)", text, flags=re.IGNORECASE)
+                if match:
+                    showtimes.append(match.group(0).upper())
+
+        unique_showtimes = sorted(set(showtimes))
+        return {
+            title: {
+                "Telugu 2D": unique_showtimes
+            }
+        }
     except Exception as e:
         print(f"Error accessing District.in URL: {e}")
-        return {}
+        return None
 
 def load_state(path):
     if not os.path.exists(path):
@@ -287,6 +283,10 @@ def main():
             try:
                 if theatre.get('is_district', False):
                     current = extract_district_showtimes(theatre["url"])
+                    if current is None:
+                        print("  ⚠️ District request failed. Retrying...")
+                        time.sleep(5)
+                        continue
                 else:
                     resp = scraper.get(theatre["url"], headers=headers, timeout=30)
                     print(f"  Status: {resp.status_code}  |  Size: {len(resp.text):,} bytes")
