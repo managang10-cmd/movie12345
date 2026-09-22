@@ -22,7 +22,10 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: pip install cloudscraper beautifulsoup4 requests
+        run: pip install cloudscraper beautifulsoup4 requests playwright
+
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
 
       - name: Run tracker
         env:
@@ -45,7 +48,7 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           
-        run: python tracker.py
+        run: python bms_tracker.py
 
       - name: Save and Sync State
         run: |
