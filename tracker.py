@@ -10,6 +10,18 @@ from datetime import datetime
 # ── CONFIGURATION ────────────────────────
 CHECK_DATE = "20260924"
 
+# Define TELEGRAM_CONFIGS here
+TELEGRAM_CONFIGS = [
+    {"bot_token": os.getenv("BOT_TOKEN"), "chat_id": os.getenv("CHAT_ID")},
+    {"bot_token": os.getenv("BOT_TOKEN_2"), "chat_id": os.getenv("CHAT_ID_2")},
+    {"bot_token": os.getenv("BOT_TOKEN_3"), "chat_id": os.getenv("CHAT_ID_3")},
+    {"bot_token": os.getenv("BOT_TOKEN_NAGESH"), "chat_id": os.getenv("CHAT_ID_NAGESH")},
+    {"bot_token": os.getenv("BOT_TOKEN_JERRY"), "chat_id": os.getenv("CHAT_ID_JERRY")},
+    {"bot_token": os.getenv("BOT_TOKEN_SATHPREM"), "chat_id": os.getenv("CHAT_ID_SATHPREM")},
+    {"bot_token": os.getenv("BOT_TOKEN_SAMOSA"), "chat_id": os.getenv("CHAT_ID_SAMOSA")},
+    {"bot_token": os.getenv("BOT_TOKEN_SANKA"), "chat_id": os.getenv("CHAT_ID_SANKA")},
+]
+
 THEATRES = [
     {
         "name": "Allu Cinemas - Kokapet",
@@ -73,10 +85,11 @@ THEATRES = [
     }
 ]
 
-# ── Telegram and Email Configurations (unchanged) ─────────────────────────────
-# (Keep your existing TELEGRAM_CONFIGS and EMAIL_TO_LIST configurations here)
+# Email configurations (commented out)
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "")
+EMAIL_TO_LIST = ["dandiaamigos@gmail.com"]
 
-# ── Telegram ─────────────────────────────
 def send_telegram(msg, bot_token, chat_id):
     if not bot_token or not chat_id:
         return False
@@ -87,30 +100,31 @@ def send_telegram(msg, bot_token, chat_id):
         print(f"✅ Bot {bot_token[:10]}... → {chat_id}: {r.status_code}")
         return r.status_code == 200
     except Exception as e:
-        print(f"❌ {e}")
+        print(f"❌ Telegram Error: {e}")
         return False
 
 def send_to_all_chats(msg):
     valid = [c for c in TELEGRAM_CONFIGS if c["bot_token"] and c["chat_id"]]
     if not valid:
-        print("⚠️  No Telegram credentials configured.")
+        print("⚠️ No Telegram credentials configured.")
     else:
-        with ThreadPoolExecutor(max_workers=len(valid)) as ex:
-            results = list(ex.map(lambda c: send_telegram(msg, c["bot_token"], c["chat_id"]), valid))
+        with ThreadPoolExecutor(max_workers=len(valid)) as executor:
+            results = list(executor.map(lambda c: send_telegram(msg, c["bot_token"], c["chat_id"]), valid))
         print(f"✨ Sent to {sum(results)}/{len(results)} Telegram destinations")
 
-# Email function remains unchanged
+def send_email(msg_body, subject="🎬 New BMS Show Alert!"):
+    if not BREVO_API_KEY or not EMAIL_FROM or not EMAIL_TO_LIST:
+        print("⚠️ Email not configured — skipping.")
+        return False
+    # Email logic remains commented out
 
-# ── Extraction Functions ────────────────────────────
 def showdatetime_to_time(raw):
-    """'202604031245' → '12:45 PM'"""
     try:
         return datetime.strptime(raw[-4:], "%H%M").strftime("%I:%M %p").lstrip("0")
     except Exception:
         return raw
 
 def extract_movies_with_timings(html):
-    """Extract showtimes from BookMyShow"""
     soup = BeautifulSoup(html, "html.parser")
     raw = ""
     for script in soup.find_all("script"):
@@ -118,14 +132,11 @@ def extract_movies_with_timings(html):
         if '"EventTitle"' in t and '"ShowTimes"' in t:
             raw = t
             break
-
     if not raw:
         return {}
-
     title_matches = list(re.finditer(r'"EventTitle"\s*:\s*"([^"]+)"', raw))
     if not title_matches:
         return {}
-
     result = {}
     for i, title_match in enumerate(title_matches):
         title = title_match.group(1).strip()
@@ -133,7 +144,6 @@ def extract_movies_with_timings(html):
         end = title_matches[i + 1].start() if i + 1 < len(title_matches) else len(raw)
         movie_block = raw[start:end]
         result[title] = {}
-
         child_matches = list(re.finditer(r'"EventName"\s*:\s*"([^"]+)"', movie_block))
         for j, child_match in enumerate(child_matches):
             event_name = child_match.group(1).strip()
@@ -141,11 +151,9 @@ def extract_movies_with_timings(html):
             dim_m = re.search(r'"EventDimension"\s*:\s*"([^"]+)"', movie_block[child_match.start():child_match.start() + 300])
             dim = dim_m.group(1) if dim_m else ""
             key = f"{lang} {dim}".strip()
-
             c_start = child_match.start()
             c_end = child_matches[j + 1].start() if j + 1 < len(child_matches) else len(movie_block)
             child_block = movie_block[c_start:c_end]
-
             times = []
             for show_m in re.finditer(r'"ShowDateTime"\s*:\s*"(\d{12})"', child_block):
                 time_str = showdatetime_to_time(show_m.group(1))
@@ -154,23 +162,20 @@ def extract_movies_with_timings(html):
                 display = f"{time_str} [{attr}]" if attr else time_str
                 if display not in times:
                     times.append(display)
-
             if times:
                 result[title][key] = times
-
         if not result[title]:
             result[title] = {}
-
     return result
 
 def extract_district_showtimes(url):
-    """Extract showtimes from District.in"""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
         "Referer": "https://www.district.in/",
         "DNT": "1",
+        "Accept-Encoding": "gzip, deflate, br",
     }
 
     try:
@@ -198,9 +203,7 @@ def extract_district_showtimes(url):
         print(f"Error accessing District.in URL: {e}")
         return {}
 
-# ── State helpers ─────────────────────────
 def load_state(path):
-    """Load state from file"""
     if not os.path.exists(path):
         return None
     data = {}
@@ -222,15 +225,12 @@ def load_state(path):
     return data
 
 def save_state(path, movies):
-    """Save state to file"""
     with open(path, "w", encoding="utf-8") as f:
         for name, langs in sorted(movies.items()):
             parts = ";".join(f"{lang}:{','.join(times)}" for lang, times in sorted(langs.items()))
             f.write(f"{name}|{parts}\n")
 
-# ── Alert builder ─────────────────────────
 def build_alert(theatre_name, theatre_url, new_movies, new_shows):
-    """Build alert message"""
     all_movies = list(new_movies.keys()) + list(new_shows.keys())
     first_movie = all_movies[0].upper() if all_movies else "NEW SHOW"
     ts = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
@@ -259,10 +259,8 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
             msg += f"\n🎥 *{movie}*\n"
             for lang, times in sorted(langs.items()):
                 msg += f"  `{lang}` → {' | '.join(times)}\n"
-
     return msg
 
-# ── Main ──────────────────────────────────
 def main():
     print("--- BMS SHOW TRACKER ---")
     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -297,7 +295,7 @@ def main():
                     if resp.status_code == 200:
                         current = extract_movies_with_timings(resp.text)
                     else:
-                        print(f"  ⚠️  Status {resp.status_code}. Retrying...")
+                        print(f"  ⚠️ Status {resp.status_code}. Retrying...")
                         time.sleep(5)
                         continue
 
@@ -332,7 +330,7 @@ def main():
                         save_state(theatre["state_file"], current)
                         print(f"  ✨ Alert sent!")
                     else:
-                        print(f"  ℹ️  No changes since last check")
+                        print(f"  ℹ️ No changes since last check")
                         save_state(theatre["state_file"], current)
 
                 success = True
