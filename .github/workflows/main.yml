@@ -48,7 +48,7 @@ jobs:
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           
-        run: python bms_tracker.py
+        run: python tracker.py
 
       - name: Save and Sync State
         run: |
