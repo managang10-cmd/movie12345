@@ -249,21 +249,34 @@ def parse_district_text(full_text):
 
 
 def _fetch_district_rendered_text(url, timeout_ms=45000):
-    """Load the page in a real headless browser and return (html, inner_text)."""
+    """Load the page in a real headless browser and return (html, inner_text).
+    
+    Uses stealth mode to bypass bot detection (District.in blocks obvious headless browsers).
+    """
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         raise RuntimeError(
             "Playwright is not installed. Run:\n"
-            "    pip install playwright\n"
+            "    pip install playwright playwright-stealth\n"
             "    playwright install --with-deps chromium\n"
             "then re-run this script."
         )
 
+    try:
+        from playwright_stealth import stealth_sync
+    except ImportError:
+        stealth_sync = None
+        print("  [district] ⚠️ playwright-stealth not installed; stealth mode disabled.")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            args=["--disable-blink-features=AutomationControlled"],
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+            ],
         )
         context = browser.new_context(
             user_agent=(
@@ -272,17 +285,31 @@ def _fetch_district_rendered_text(url, timeout_ms=45000):
             ),
             viewport={"width": 1366, "height": 900},
             locale="en-US",
+            # Pretend we're a real device, not a bot
+            device_scale_factor=1,
+            has_touch=False,
+            is_mobile=False,
         )
         page = context.new_page()
+        
+        # Apply stealth patches if available
+        if stealth_sync:
+            stealth_sync(page)
+        
         try:
             page.goto(url, timeout=timeout_ms, wait_until="domcontentloaded")
+            
+            # Add a small random delay to appear more human-like
+            page.wait_for_timeout(2000 + int(__import__("random").random() * 3000))
+            
             # Wait for at least one time-looking string to show up in the DOM.
             try:
-                page.wait_for_selector("text=/\\d{1,2}:\\d{2}\\s*(AM|PM)/i", timeout=20000)
+                page.wait_for_selector("text=/\\d{1,2}:\\d{2}\\s*(AM|PM)/i", timeout=15000)
             except Exception:
                 # Might just be sold out / no shows — still grab whatever rendered.
-                page.wait_for_timeout(3000)
-            page.wait_for_timeout(1500)  # let any trailing XHR-driven UI settle
+                page.wait_for_timeout(2000)
+            
+            page.wait_for_timeout(1000)  # let any trailing XHR-driven UI settle
             html = page.content()
             text = page.inner_text("body")
         finally:
