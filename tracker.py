@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import requests
 import cloudscraper
 import time
@@ -9,6 +10,7 @@ from datetime import datetime
 
 # ── CONFIGURATION ────────────────────────
 CHECK_DATE = "20260924"
+DEBUG_DUMP_HTML = True  # dump raw HTML to disk when district scrape returns nothing, for troubleshooting
 
 # Define TELEGRAM_CONFIGS
 TELEGRAM_CONFIGS = [
@@ -79,11 +81,12 @@ THEATRES = [
     },
     {
         "name": "District.in - Sudarshan",
-        "url": f"https://www.district.in/movies/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads-hyderabad-in-hyderabad-CD1065725?fromdate={CHECK_DATE}",
+        "url": "https://www.district.in/movies/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads-hyderabad-in-hyderabad-CD1065725",
         "state_file": "known_movies_district.txt",
         "is_district": True
     }
 ]
+
 
 def send_telegram(msg, bot_token, chat_id):
     if not bot_token or not chat_id:
@@ -98,6 +101,7 @@ def send_telegram(msg, bot_token, chat_id):
         print(f"❌ Telegram Error: {e}")
         return False
 
+
 def send_to_all_chats(msg):
     valid = [c for c in TELEGRAM_CONFIGS if c["bot_token"] and c["chat_id"]]
     if not valid:
@@ -107,11 +111,13 @@ def send_to_all_chats(msg):
             results = list(executor.map(lambda c: send_telegram(msg, c["bot_token"], c["chat_id"]), valid))
         print(f"✨ Sent to {sum(results)}/{len(results)} Telegram destinations")
 
+
 def showdatetime_to_time(raw):
     try:
         return datetime.strptime(raw[-4:], "%H%M").strftime("%I:%M %p").lstrip("0")
     except Exception:
         return raw
+
 
 def extract_movies_with_timings(html):
     soup = BeautifulSoup(html, "html.parser")
@@ -157,45 +163,142 @@ def extract_movies_with_timings(html):
             result[title] = {}
     return result
 
-def extract_district_showtimes(url):
+
+# ── DISTRICT.IN SCRAPER ──────────────────
+# District.in is a Next.js app: real showtime data is almost always embedded as
+# JSON inside a <script id="__NEXT_DATA__"> tag (or a similar __NUXT__/window.__data
+# style blob), not present as plain text in the server-rendered HTML. Scraping
+# visible <div> text with regex (the old approach) will usually find nothing even
+# when the request itself succeeds. This version:
+#   1. Fetches with cloudscraper (same as BMS) instead of plain requests, since
+#      District.in also sits behind bot protection.
+#   2. Tries to locate and parse embedded JSON and pull out anything that looks
+#      like a showtime.
+#   3. Falls back to the old div/regex scrape if no JSON is found.
+#   4. Prints rich debug info (status code, page size, whether JSON was found)
+#      and optionally dumps the raw HTML to disk, so failures are diagnosable
+#      instead of silently returning {}.
+
+TIME_RE = re.compile(r'\b\d{1,2}:\d{2}\s*(?:AM|PM)\b', re.IGNORECASE)
+
+
+def _find_times_in_json(obj, found):
+    """Recursively walk a parsed JSON structure and collect anything that looks
+    like a show time, from either dict values or list-of-strings."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            key_l = str(k).lower()
+            if isinstance(v, str):
+                if TIME_RE.search(v):
+                    for m in TIME_RE.findall(v):
+                        found.add(m.upper())
+                elif any(word in key_l for word in ("time", "slot", "show")) and v:
+                    # sometimes times are stored as raw strings like "14:30" or "1430"
+                    m2 = re.match(r'^(\d{1,2}):?(\d{2})$', v.strip())
+                    if m2:
+                        try:
+                            t = datetime.strptime(f"{m2.group(1)}:{m2.group(2)}", "%H:%M").strftime("%I:%M %p").lstrip("0")
+                            found.add(t)
+                        except Exception:
+                            pass
+            else:
+                _find_times_in_json(v, found)
+    elif isinstance(obj, list):
+        for item in obj:
+            _find_times_in_json(item, found)
+
+
+def extract_district_showtimes(url, scraper, debug_name="district"):
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.district.in/",
+        "DNT": "1",
+        "Upgrade-Insecure-Requests": "1",
     }
     try:
-        response = requests.get(url, headers=headers, timeout=30)
+        response = scraper.get(url, headers=headers, timeout=30)
+        print(f"  [district] Status: {response.status_code}  |  Size: {len(response.text):,} bytes")
+
         if response.status_code != 200:
-            print(f"Failed to fetch data from District.in. Status code: {response.status_code}")
-            return None
+            print(f"  [district] ⚠️ Non-200 response, cannot proceed this attempt.")
+            return {}
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        title_match = soup.find("h1")
-        title = title_match.get_text(strip=True) if title_match else "The Paradise"
+        html = response.text
+        soup = BeautifulSoup(html, "html.parser")
 
-        time_divs = soup.find_all("div", class_=re.compile(r"time", re.IGNORECASE))
+        # --- Strategy 1: __NEXT_DATA__ or any application/json script blob ---
+        json_scripts = soup.find_all("script", attrs={"type": "application/json"})
+        json_scripts += [s for s in soup.find_all("script", id="__NEXT_DATA__") if s not in json_scripts]
+
+        all_times = set()
+        parsed_any_json = False
+        for script in json_scripts:
+            raw = script.string or script.get_text() or ""
+            if not raw.strip():
+                continue
+            try:
+                data = json.loads(raw)
+                parsed_any_json = True
+                _find_times_in_json(data, all_times)
+            except json.JSONDecodeError:
+                continue
+
+        print(f"  [district] JSON scripts found: {len(json_scripts)}  |  parsed ok: {parsed_any_json}  |  times found in JSON: {len(all_times)}")
+
+        if all_times:
+            return {"The Paradise": {"Telugu 2D": sorted(all_times)}}
+
+        # --- Strategy 2: also check for any <script> (not just type=json) that
+        # contains inline JS assignments like window.__INITIAL_STATE__ = {...} ---
+        for script in soup.find_all("script"):
+            t = script.string or script.get_text() or ""
+            if not t or ("show" not in t.lower() and "slot" not in t.lower()):
+                continue
+            m = re.search(r'=\s*(\{.*\})\s*;?\s*$', t.strip(), re.DOTALL)
+            if m:
+                try:
+                    data = json.loads(m.group(1))
+                    _find_times_in_json(data, all_times)
+                except Exception:
+                    pass
+
+        if all_times:
+            print(f"  [district] Found {len(all_times)} times via inline JS state blob.")
+            return {"The Paradise": {"Telugu 2D": sorted(all_times)}}
+
+        # --- Strategy 3 (fallback): old-style div text scrape ---
+        time_divs = soup.find_all('div', class_=re.compile(r'time', re.IGNORECASE))
         showtimes = []
-
         for div in time_divs:
-            time_text = div.get_text(" ", strip=True)
-            matches = re.findall(r"\b\d{1,2}:\d{2}\s*(?:AM|PM)\b", time_text, flags=re.IGNORECASE)
-            for match in matches:
-                showtimes.append(match.upper())
+            time_text = div.get_text(strip=True)
+            for m in TIME_RE.findall(time_text):
+                if m.upper() not in showtimes:
+                    showtimes.append(m.upper())
 
-        if not showtimes:
-            for div in time_divs:
-                text = div.get_text(" ", strip=True)
-                match = re.search(r"\d{1,2}:\d{2}\s*(?:AM|PM)", text, flags=re.IGNORECASE)
-                if match:
-                    showtimes.append(match.group(0).upper())
+        print(f"  [district] Fallback div-scrape found: {len(showtimes)} showtimes")
 
-        unique_showtimes = sorted(set(showtimes))
-        return {
-            title: {
-                "Telugu 2D": unique_showtimes
-            }
-        }
+        if showtimes:
+            return {"The Paradise": {"Telugu 2D": sorted(showtimes)}}
+
+        # Nothing worked — dump HTML for manual inspection so the JSON/HTML
+        # structure can be inspected and the scraper updated.
+        if DEBUG_DUMP_HTML:
+            dump_path = f"debug_{debug_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            try:
+                with open(dump_path, "w", encoding="utf-8") as f:
+                    f.write(html)
+                print(f"  [district] ⚠️ No showtimes found by any strategy. Raw HTML dumped to {dump_path} for inspection.")
+            except Exception as e:
+                print(f"  [district] Could not write debug dump: {e}")
+
+        return {}
+
     except Exception as e:
-        print(f"Error accessing District.in URL: {e}")
-        return None
+        print(f"  [district] ❌ Error accessing District.in URL: {e}")
+        return {}
+
 
 def load_state(path):
     if not os.path.exists(path):
@@ -218,16 +321,17 @@ def load_state(path):
                 data[line] = {}
     return data
 
+
 def save_state(path, movies):
     with open(path, "w", encoding="utf-8") as f:
         for name, langs in sorted(movies.items()):
             parts = ";".join(f"{lang}:{','.join(times)}" for lang, times in sorted(langs.items()))
             f.write(f"{name}|{parts}\n")
 
+
 def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     all_movies = list(new_movies.keys()) + list(new_shows.keys())
     first_movie = all_movies[0].upper() if all_movies else "NEW SHOW"
-    ts = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     try:
         formatted_date = datetime.strptime(CHECK_DATE, "%Y%m%d").strftime("%d %b %Y")
     except ValueError:
@@ -255,8 +359,9 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
                 msg += f"  `{lang}` → {' | '.join(times)}\n"
     return msg
 
+
 def main():
-    print("--- BMS SHOW TRACKER ---")
+    print("--- BMS / DISTRICT SHOW TRACKER ---")
     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
     scraper = cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows", "desktop": True})
@@ -282,9 +387,9 @@ def main():
         for attempt in range(3):
             try:
                 if theatre.get('is_district', False):
-                    current = extract_district_showtimes(theatre["url"])
-                    if current is None:
-                        print("  ⚠️ District request failed. Retrying...")
+                    current = extract_district_showtimes(theatre["url"], scraper, debug_name=theatre["state_file"].replace(".txt", ""))
+                    if not current:
+                        print(f"  ⚠️ District scrape returned nothing. Retrying...")
                         time.sleep(5)
                         continue
                 else:
@@ -342,6 +447,7 @@ def main():
             print(f"  ❌ Failed after 3 attempts: {theatre['name']}")
 
         time.sleep(3)
+
 
 if __name__ == "__main__":
     main()
