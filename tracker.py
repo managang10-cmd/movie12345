@@ -81,7 +81,7 @@ THEATRES = [
     },
     {
         "name": "District.in - Sudarshan",
-        "url": "https://www.district.in/movies/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads-hyderabad-in-hyderabad-CD1065725",
+        "url": f"https://www.district.in/movies/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads-hyderabad-in-hyderabad-CD1065725?fromdate=2026-09-24",
         "state_file": "known_movies_district.txt",
         "is_district": True
     }
@@ -165,47 +165,129 @@ def extract_movies_with_timings(html):
 
 
 # ── DISTRICT.IN SCRAPER ──────────────────
-# District.in is a Next.js app: real showtime data is almost always embedded as
-# JSON inside a <script id="__NEXT_DATA__"> tag (or a similar __NUXT__/window.__data
-# style blob), not present as plain text in the server-rendered HTML. Scraping
-# visible <div> text with regex (the old approach) will usually find nothing even
-# when the request itself succeeds. This version:
-#   1. Fetches with cloudscraper (same as BMS) instead of plain requests, since
-#      District.in also sits behind bot protection.
-#   2. Tries to locate and parse embedded JSON and pull out anything that looks
-#      like a showtime.
-#   3. Falls back to the old div/regex scrape if no JSON is found.
-#   4. Prints rich debug info (status code, page size, whether JSON was found)
-#      and optionally dumps the raw HTML to disk, so failures are diagnosable
-#      instead of silently returning {}.
+# District.in returns a 403 WAF block page (tiny ~500 byte body) to plain HTTP
+# clients, including cloudscraper — that's a bot-protection block, not a
+# Cloudflare JS challenge, so cloudscraper can't solve it. And even on success,
+# the showtimes are only present after client-side JavaScript renders the page
+# (confirmed by the screenshot: date tabs, filters, and time buttons are all
+# JS-driven React/Next.js UI) — there is no static HTML/JSON to scrape.
+#
+# So this version:
+#   1. Tries a cheap cloudscraper GET first (occasionally WAFs are inconsistent).
+#   2. Falls back to a real headless browser (Playwright/Chromium) that actually
+#      loads and renders the page the way your screenshot shows, then reads the
+#      showtimes straight out of the rendered text.
+#   3. Parses the rendered text generically: it looks for "<CERT> | <Language>"
+#      lines (e.g. "A | Telugu") to find movie titles, language header lines
+#      (e.g. "Telugu") to find the showtimes section, and HH:MM AM/PM tokens
+#      underneath as the actual times — matching the structure visible on the
+#      real page.
+#   4. Dumps the rendered HTML to disk if nothing is found, for debugging.
+#
+# REQUIREMENT: `pip install playwright` and then `playwright install --with-deps
+# chromium` must be run once (in CI: add this as a workflow step) before this
+# will work. If Playwright/its browser isn't installed, this prints a clear
+# error instead of crashing obscurely.
 
 TIME_RE = re.compile(r'\b\d{1,2}:\d{2}\s*(?:AM|PM)\b', re.IGNORECASE)
+CERT_LANG_RE = re.compile(r'^[A-Za-z0-9\+]{1,4}\s*\|\s*([A-Za-z]+)\s*$')
+KNOWN_LANGUAGES = {
+    "telugu", "hindi", "english", "tamil", "kannada", "malayalam",
+    "bengali", "marathi", "punjabi", "gujarati", "odia"
+}
 
 
-def _find_times_in_json(obj, found):
-    """Recursively walk a parsed JSON structure and collect anything that looks
-    like a show time, from either dict values or list-of-strings."""
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            key_l = str(k).lower()
-            if isinstance(v, str):
-                if TIME_RE.search(v):
-                    for m in TIME_RE.findall(v):
-                        found.add(m.upper())
-                elif any(word in key_l for word in ("time", "slot", "show")) and v:
-                    # sometimes times are stored as raw strings like "14:30" or "1430"
-                    m2 = re.match(r'^(\d{1,2}):?(\d{2})$', v.strip())
-                    if m2:
-                        try:
-                            t = datetime.strptime(f"{m2.group(1)}:{m2.group(2)}", "%H:%M").strftime("%I:%M %p").lstrip("0")
-                            found.add(t)
-                        except Exception:
-                            pass
-            else:
-                _find_times_in_json(v, found)
-    elif isinstance(obj, list):
-        for item in obj:
-            _find_times_in_json(item, found)
+def parse_district_text(full_text):
+    """Parse the fully-rendered page's inner text into {movie: {language: [times]}}.
+
+    Heuristic based on the visible page structure:
+        The Paradise
+        A | Telugu
+        Action, Adventure, Drama
+        Telugu
+        07:00 AM
+        10:45 AM
+        ...
+    The line just before a "<CERT> | <Language>" line is treated as the movie
+    title. A standalone line matching a known language name starts a showtimes
+    block; HH:MM AM/PM tokens after it (until the next language header or the
+    next movie's cert line) are collected as that language's times.
+    """
+    lines = [l.strip() for l in full_text.split("\n") if l.strip()]
+    movies = {}
+    current_movie = None
+    current_lang = None
+
+    for i, line in enumerate(lines):
+        cert_m = CERT_LANG_RE.match(line)
+        if cert_m:
+            title = lines[i - 1] if i - 1 >= 0 else "Unknown Movie"
+            current_movie = title
+            movies.setdefault(current_movie, {})
+            current_lang = None
+            continue
+
+        if line.lower() in KNOWN_LANGUAGES:
+            current_lang = line
+            if current_movie:
+                movies[current_movie].setdefault(current_lang, [])
+            continue
+
+        if current_movie and current_lang:
+            for m in TIME_RE.findall(line):
+                t = m.upper()
+                if t not in movies[current_movie][current_lang]:
+                    movies[current_movie][current_lang].append(t)
+
+    # drop movies/languages with no times collected
+    cleaned = {}
+    for movie, langs in movies.items():
+        kept = {lang: times for lang, times in langs.items() if times}
+        if kept:
+            cleaned[movie] = kept
+    return cleaned
+
+
+def _fetch_district_rendered_text(url, timeout_ms=45000):
+    """Load the page in a real headless browser and return (html, inner_text)."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        raise RuntimeError(
+            "Playwright is not installed. Run:\n"
+            "    pip install playwright\n"
+            "    playwright install --with-deps chromium\n"
+            "then re-run this script."
+        )
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1366, "height": 900},
+            locale="en-US",
+        )
+        page = context.new_page()
+        try:
+            page.goto(url, timeout=timeout_ms, wait_until="domcontentloaded")
+            # Wait for at least one time-looking string to show up in the DOM.
+            try:
+                page.wait_for_selector("text=/\\d{1,2}:\\d{2}\\s*(AM|PM)/i", timeout=20000)
+            except Exception:
+                # Might just be sold out / no shows — still grab whatever rendered.
+                page.wait_for_timeout(3000)
+            page.wait_for_timeout(1500)  # let any trailing XHR-driven UI settle
+            html = page.content()
+            text = page.inner_text("body")
+        finally:
+            browser.close()
+        return html, text
 
 
 def extract_district_showtimes(url, scraper, debug_name="district"):
@@ -217,87 +299,48 @@ def extract_district_showtimes(url, scraper, debug_name="district"):
         "DNT": "1",
         "Upgrade-Insecure-Requests": "1",
     }
+
+    # --- Attempt 1: cheap cloudscraper GET (works if the WAF doesn't trigger) ---
+    html = None
     try:
-        response = scraper.get(url, headers=headers, timeout=30)
-        print(f"  [district] Status: {response.status_code}  |  Size: {len(response.text):,} bytes")
-
-        if response.status_code != 200:
-            print(f"  [district] ⚠️ Non-200 response, cannot proceed this attempt.")
-            return {}
-
-        html = response.text
-        soup = BeautifulSoup(html, "html.parser")
-
-        # --- Strategy 1: __NEXT_DATA__ or any application/json script blob ---
-        json_scripts = soup.find_all("script", attrs={"type": "application/json"})
-        json_scripts += [s for s in soup.find_all("script", id="__NEXT_DATA__") if s not in json_scripts]
-
-        all_times = set()
-        parsed_any_json = False
-        for script in json_scripts:
-            raw = script.string or script.get_text() or ""
-            if not raw.strip():
-                continue
-            try:
-                data = json.loads(raw)
-                parsed_any_json = True
-                _find_times_in_json(data, all_times)
-            except json.JSONDecodeError:
-                continue
-
-        print(f"  [district] JSON scripts found: {len(json_scripts)}  |  parsed ok: {parsed_any_json}  |  times found in JSON: {len(all_times)}")
-
-        if all_times:
-            return {"The Paradise": {"Telugu 2D": sorted(all_times)}}
-
-        # --- Strategy 2: also check for any <script> (not just type=json) that
-        # contains inline JS assignments like window.__INITIAL_STATE__ = {...} ---
-        for script in soup.find_all("script"):
-            t = script.string or script.get_text() or ""
-            if not t or ("show" not in t.lower() and "slot" not in t.lower()):
-                continue
-            m = re.search(r'=\s*(\{.*\})\s*;?\s*$', t.strip(), re.DOTALL)
-            if m:
-                try:
-                    data = json.loads(m.group(1))
-                    _find_times_in_json(data, all_times)
-                except Exception:
-                    pass
-
-        if all_times:
-            print(f"  [district] Found {len(all_times)} times via inline JS state blob.")
-            return {"The Paradise": {"Telugu 2D": sorted(all_times)}}
-
-        # --- Strategy 3 (fallback): old-style div text scrape ---
-        time_divs = soup.find_all('div', class_=re.compile(r'time', re.IGNORECASE))
-        showtimes = []
-        for div in time_divs:
-            time_text = div.get_text(strip=True)
-            for m in TIME_RE.findall(time_text):
-                if m.upper() not in showtimes:
-                    showtimes.append(m.upper())
-
-        print(f"  [district] Fallback div-scrape found: {len(showtimes)} showtimes")
-
-        if showtimes:
-            return {"The Paradise": {"Telugu 2D": sorted(showtimes)}}
-
-        # Nothing worked — dump HTML for manual inspection so the JSON/HTML
-        # structure can be inspected and the scraper updated.
-        if DEBUG_DUMP_HTML:
-            dump_path = f"debug_{debug_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-            try:
-                with open(dump_path, "w", encoding="utf-8") as f:
-                    f.write(html)
-                print(f"  [district] ⚠️ No showtimes found by any strategy. Raw HTML dumped to {dump_path} for inspection.")
-            except Exception as e:
-                print(f"  [district] Could not write debug dump: {e}")
-
-        return {}
-
+        response = scraper.get(url, headers=headers, timeout=20)
+        print(f"  [district] cloudscraper status: {response.status_code}  |  size: {len(response.text):,} bytes")
+        if response.status_code == 200 and len(response.text) > 5000:
+            html = response.text
+        else:
+            print(f"  [district] cloudscraper attempt looks blocked (status/size too small) — falling back to headless browser.")
     except Exception as e:
-        print(f"  [district] ❌ Error accessing District.in URL: {e}")
-        return {}
+        print(f"  [district] cloudscraper attempt errored: {e} — falling back to headless browser.")
+
+    if html:
+        result = parse_district_text(BeautifulSoup(html, "html.parser").get_text("\n"))
+        if result:
+            return result
+        # even a 200 might be a pre-render shell with no JS-populated content
+
+    # --- Attempt 2: real headless browser render ---
+    try:
+        html, text = _fetch_district_rendered_text(url)
+        print(f"  [district] Playwright render size: {len(html):,} bytes")
+        result = parse_district_text(text)
+        print(f"  [district] Parsed {sum(len(t) for langs in result.values() for t in langs.values())} showtime(s) across {len(result)} movie(s).")
+        if result:
+            return result
+    except Exception as e:
+        print(f"  [district] ❌ Headless browser attempt failed: {e}")
+        html = html or ""
+
+    # Nothing worked — dump for inspection.
+    if DEBUG_DUMP_HTML and html:
+        dump_path = f"debug_{debug_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        try:
+            with open(dump_path, "w", encoding="utf-8") as f:
+                f.write(html)
+            print(f"  [district] ⚠️ No showtimes parsed. Rendered HTML dumped to {dump_path} for inspection.")
+        except Exception as e:
+            print(f"  [district] Could not write debug dump: {e}")
+
+    return {}
 
 
 def load_state(path):
