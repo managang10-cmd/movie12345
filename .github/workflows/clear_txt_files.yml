@@ -1,0 +1,37 @@
+name: Clear Theatre TXT Files
+
+on:
+  workflow_dispatch:
+
+jobs:
+  clear:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Clear theatre txt files
+        run: python clear_txt_files.py
+
+      - name: Commit and push emptied files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add known_movies_*.txt
+          if ! git diff --staged --quiet; then
+            git commit -m "Clear theatre txt files [skip ci]"
+            git pull --rebase origin main
+            git push origin main
+          else
+            echo "No theatre txt files needed clearing."
+          fi
