@@ -22,41 +22,36 @@ THEATRES = [
         "url": f"https://in.bookmyshow.com/cinemas/hyderabad/art-cinemas-vanasthalipuram/buytickets/ACEV/{CHECK_DATE}",
         "state_file": "known_movies_art.txt"
     },
-    {
-        "name": "sandhya-35",
-        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sandhya-35mm-2k-dolby-atmos-rtc-x-roads/buytickets/SNDY/{CHECK_DATE}",
-        "state_file": "known_movies_sand_35.txt"
-    },
-    {
-        "name": "sandhya-70",
-        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sandhya-70mm-4k-dolby-atmos-rtc-x-roads/buytickets/SMMR/{CHECK_DATE}",
-        "state_file": "known_movies_sand_70.txt"
-    },
-    {
-        "name": "saptagiri",
-        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/saptagiri-70mm-4k-dolby-digital-rtc-x-roads/buytickets/SART/{CHECK_DATE}",
-        "state_file": "known_movies_saptagiri.txt"
-    },
-    {
-        "name": "devi",
-        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/devi-70mm-4k-laser-dolby-atmos-rtc-x-roads/buytickets/DVRR/{CHECK_DATE}",
-        "state_file": "known_movies_devi.txt"
-    },
-    {
-        "name": "sudarshan-35",
-        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads/buytickets/SUDA/{CHECK_DATE}",
-        "state_file": "known_movies_sudh_35.txt"
-    },
-    {
-        "name": "sri sai ram",
-        "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sri-sai-ram-70mm-a-c-4k-laser-dolby-71malkajgiri/buytickets/SSRM/{CHECK_DATE}",
-        "state_file": "known_movies_srisairam.txt"
-    },
-    {
-        "name": "District.in - Sudarshan",
-        "url": f"https://www.district.in/movies/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads-hyderabad-in-hyderabad-CD1065725?fromdate={CHECK_DATE}",
-        "state_file": "known_movies_district.txt"
-    }
+  {
+    "name": "sandhya-35",
+    "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sandhya-35mm-2k-dolby-atmos-rtc-x-roads/buytickets/SNDY/{CHECK_DATE}",
+    "state_file": "known_movies_sand_35.txt"
+  },
+  {
+    "name": "sandhya-70",
+    "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sandhya-70mm-4k-dolby-atmos-rtc-x-roads/buytickets/SMMR/{CHECK_DATE}",
+    "state_file": "known_movies_sand_70.txt"
+  },
+  {
+    "name": "saptagiri",
+    "url": f"https://in.bookmyshow.com/cinemas/hyderabad/saptagiri-70mm-4k-dolby-digital-rtc-x-roads/buytickets/SART/{CHECK_DATE}",
+    "state_file": "known_movies_saptagiri.txt"
+  },
+  {
+    "name": "devi",
+    "url": f"https://in.bookmyshow.com/cinemas/hyderabad/devi-70mm-4k-laser-dolby-atmos-rtc-x-roads/buytickets/DVRR/{CHECK_DATE}",
+    "state_file": "known_movies_devi.txt"
+  },
+  {
+    "name": "sudarshan-35",
+    "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sudarshan-35mm-4k-laser-dolby-atmos-rtc-x-roads/buytickets/SUDA/{CHECK_DATE}",
+    "state_file": "known_movies_sudh_35.txt"
+  },
+  {
+    "name": "sri sai ram",
+    "url": f"https://in.bookmyshow.com/cinemas/hyderabad/sri-sai-ram-70mm-a-c-4k-laser-dolby-71malkajgiri/buytickets/SSRM/{CHECK_DATE}",
+    "state_file": "known_movies_srisairam.txt"
+  }
 ]
 
 TELEGRAM_CONFIGS = [
@@ -70,20 +65,20 @@ TELEGRAM_CONFIGS = [
     {"bot_token": os.getenv("BOT_TOKEN_SANKA"), "chat_id": os.getenv("CHAT_ID_SANKA")},
 ]
 
-# Email config (via Brevo, free 300/day, API-key based - no password shared)
-# BREVO_API_KEY and EMAIL_FROM still come from GitHub secrets (Settings > Secrets > Actions)
+# ── Email config (via Brevo, free 300/day, API-key based — no password shared) ──
+# BREVO_API_KEY and EMAIL_FROM still come from GitHub secrets (Settings > Secrets > Actions).
 # EMAIL_TO is hardcoded here directly — just edit the list below with your recipients.
-# BREVO_API_KEY = os.getenv("BREVO_API_KEY")
-# EMAIL_FROM    = os.getenv("EMAIL_FROM", "")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+EMAIL_FROM    = os.getenv("EMAIL_FROM", "")
 
-# EMAIL_TO_LIST = [
-#     "gudipatisaicharan711@gmail.com",
-#     "dandiaamigos@gmail.com",
-#     "sreekargudipati005@gmail.com",
-# ]
+EMAIL_TO_LIST = [
+    # "gudipatisaicharan711@gmail.com",
+    "dandiaamigos@gmail.com",
+    # "sreekargudipati005@gmail.com",
+]
 
 
-# Telegram ─────────────────────────────
+# ── Telegram ─────────────────────────────
 def send_telegram(msg, bot_token, chat_id):
     if not bot_token or not chat_id:
         return False
@@ -110,10 +105,10 @@ def send_to_all_chats(msg):
         print(f"✨ Sent to {sum(results)}/{len(results)} Telegram destinations")
 
     # Also fire off email in parallel with Telegram
-    # send_email(msg)
+    send_email(msg)
 
 
-# Email ─────────────────────────────────
+# ── Email ─────────────────────────────────
 def send_email(msg_body, subject="🎬 New BMS Show Alert!"):
     """Sends the alert text as an email via Brevo's transactional email API.
     Free tier: 300 emails/day. Uses a revocable API key — never your account password."""
@@ -149,7 +144,7 @@ def send_email(msg_body, subject="🎬 New BMS Show Alert!"):
         return False
 
 
-# Extraction ────────────────────────────
+# ── Extraction ────────────────────────────
 def showdatetime_to_time(raw):
     """'202604031245' → '12:45 PM'"""
     try:
@@ -210,7 +205,7 @@ def extract_movies_with_timings(html):
         for j, child_match in enumerate(child_matches):
             event_name = child_match.group(1).strip()
 
-            # Language is the last part after " - "
+            # Language = last part after " - "
             lang = event_name.split(" - ")[-1] if " - " in event_name else event_name
 
             # Dimension (2D/3D/4DX)
@@ -246,7 +241,7 @@ def extract_movies_with_timings(html):
     return result
 
 
-# State helpers ─────────────────────────
+# ── State helpers ─────────────────────────
 # State format per line:  MovieName|Lang Dim:T1,T2;Lang Dim:T3
 # Example: Dhurandhar The Revenge|Hindi 2D:8:00 AM,12:10 PM;Telugu 2D:6:20 PM
 
@@ -284,7 +279,7 @@ def save_state(path, movies):
             f.write(f"{name}|{parts}\n")
 
 
-# Alert builder ─────────────────────────
+# ── Alert builder ─────────────────────────
 def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     """
     new_movies: { movie: { lang: [times] } }  — brand new movies
@@ -327,7 +322,7 @@ def build_alert(theatre_name, theatre_url, new_movies, new_shows):
     return msg
 
 
-# Main ──────────────────────────────────
+# ── Main ──────────────────────────────────
 def main():
     print("--- BMS SHOW TRACKER ---")
     print(f"🕐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -389,7 +384,7 @@ def main():
                         # Detect new show slots for existing movies
                         new_shows = {}
                         for movie, langs in current.items():
-                            if movie in known:
+                            if movie not in known:
                                 continue  # already in new_movies
                             added_langs = {}
                             for lang, times in langs.items():
