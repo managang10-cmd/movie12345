@@ -22,10 +22,7 @@ jobs:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: pip install cloudscraper beautifulsoup4 requests playwright playwright-stealth
-
-      - name: Install Playwright browser
-        run: playwright install --with-deps chromium
+        run: pip install cloudscraper beautifulsoup4 requests
 
       - name: Run tracker
         env:
